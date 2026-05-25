@@ -1,6 +1,6 @@
 ---
 name: xiaohongshu-draft-smoketest
-description: Use when validating Xiaohongshu image-post drafting in this repository, especially when reusing an existing browser profile and avoiding repeated login during MCP or Playwright smoke tests.
+description: Use when any coding agent needs to validate Xiaohongshu image-post drafting in this repository, especially when reusing an existing browser profile, avoiding repeated QR login, and running a real smoke test through the local Node or MCP workflow.
 ---
 
 # Xiaohongshu Draft Smoketest
@@ -8,6 +8,7 @@ description: Use when validating Xiaohongshu image-post drafting in this reposit
 ## Overview
 
 This skill records the working Xiaohongshu smoke-test flow for this repo.
+It is written for any agent or human operator that can run local shell commands, Node.js scripts, and Playwright-backed MCP code.
 Use one persistent Playwright profile, verify login first, then create a draft with a known-good local image.
 
 ## When to Use
@@ -16,6 +17,7 @@ Use one persistent Playwright profile, verify login first, then create a draft w
 - `create_image_post_draft` needs a quick real-world check
 - You want to avoid repeated QR login during debugging
 - You are verifying regressions after touching [src/platforms/xiaohongshu.ts](D:/work/2026/code/life/social_media_skill/src/platforms/xiaohongshu.ts:1)
+- You are using Codex, Claude Code, Kimi, DeepSeek, or another agent that can execute the repo's local commands
 
 Do not use this as a general publishing workflow for other platforms.
 
@@ -30,8 +32,17 @@ Do not use this as a general publishing workflow for other platforms.
 
 ## Command
 
+PowerShell:
+
 ```bash
 $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='smoketest6'
+npx tsx scripts/smoke-xiaohongshu-draft.ts
+```
+
+Bash or zsh:
+
+```bash
+export SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='smoketest6'
 npx tsx scripts/smoke-xiaohongshu-draft.ts
 ```
 
@@ -45,6 +56,25 @@ $env:XHS_CONTENT='custom body'
 $env:XHS_TAGS='mcp,automation,test'
 npx tsx scripts/smoke-xiaohongshu-draft.ts
 ```
+
+```bash
+export SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='smoketest6'
+export XHS_IMAGE_PATH='D:/absolute/path/to/image.png'
+export XHS_TITLE='custom title'
+export XHS_CONTENT='custom body'
+export XHS_TAGS='mcp,automation,test'
+npx tsx scripts/smoke-xiaohongshu-draft.ts
+```
+
+## Agent Contract
+
+Any agent using this skill should:
+
+- stay inside this repository
+- reuse the same `SOCIAL_MEDIA_MCP_PROFILE_SUFFIX` across retries
+- prefer the smoke-test script over ad hoc one-off inline shell snippets
+- avoid opening a second process against the same Playwright profile while one is still active
+- treat the script's JSON output as the source of truth for success or failure
 
 ## Known Good Behavior
 

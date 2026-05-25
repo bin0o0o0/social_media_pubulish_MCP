@@ -109,4 +109,4 @@ npm run dev
 - Skill: `skills/xiaohongshu-draft-smoketest/SKILL.md`
 - Script: `npm run smoke:xiaohongshu`
 
-复用已有登录态时，保持同一个 `SOCIAL_MEDIA_MCP_PROFILE_SUFFIX` 即可，避免重复扫码登录。
+复用已有登录态时，保持同一个 `SOCIAL_MEDIA_MCP_PROFILE_SUFFIX` 即可，避免重复扫码登录。这个 skill 不依赖特定 agent，任何能执行本仓库 Node/Playwright 命令的环境都可以使用。
