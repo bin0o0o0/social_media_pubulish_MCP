@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+.social-media-mcp/
+.env
+*.log
