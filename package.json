@@ -9,7 +9,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "install-browsers": "playwright install chromium",
-    "smoke:xiaohongshu": "tsx scripts/smoke-xiaohongshu-draft.ts"
+    "smoke:xiaohongshu": "tsx scripts/smoke-xiaohongshu-draft.ts",
+    "smoke:douyin": "tsx scripts/smoke-douyin-draft.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

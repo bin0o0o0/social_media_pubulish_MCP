@@ -2,10 +2,15 @@ import type { Locator, Page } from "playwright";
 
 export async function firstVisibleLocator(page: Page, selectors: string[]): Promise<Locator | null> {
   for (const selector of selectors) {
-    const locator = page.locator(selector).first();
+    const matches = page.locator(selector);
+    const count = await matches.count();
 
-    if ((await locator.count()) > 0 && (await locator.isVisible().catch(() => false))) {
-      return locator;
+    for (let index = 0; index < count; index += 1) {
+      const locator = matches.nth(index);
+
+      if (await locator.isVisible().catch(() => false)) {
+        return locator;
+      }
     }
   }
 
@@ -23,6 +28,26 @@ export async function clickFirstVisible(page: Page, selectors: string[]): Promis
   return true;
 }
 
+export async function clickFirstUsable(page: Page, selectors: string[]): Promise<boolean> {
+  for (const selector of selectors) {
+    const matches = page.locator(selector);
+    const count = await matches.count();
+
+    for (let index = 0; index < count; index += 1) {
+      const locator = matches.nth(index);
+      const visible = await locator.isVisible().catch(() => false);
+      const enabled = await locator.isEnabled().catch(() => false);
+
+      if (visible && enabled) {
+        await locator.click();
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 export async function fillFirstVisible(page: Page, selectors: string[], value: string): Promise<boolean> {
   const locator = await firstVisibleLocator(page, selectors);
 
@@ -32,6 +57,24 @@ export async function fillFirstVisible(page: Page, selectors: string[], value: s
 
   await locator.fill(value);
   return true;
+}
+
+export async function waitForAnyVisible(
+  page: Page,
+  selectors: string[],
+  timeout = 30_000
+): Promise<boolean> {
+  const deadline = Date.now() + timeout;
+
+  while (Date.now() < deadline) {
+    if (await hasAnyVisible(page, selectors)) {
+      return true;
+    }
+
+    await page.waitForTimeout(500);
+  }
+
+  return false;
 }
 
 export async function setFilesOnFirstInput(page: Page, files: string[]): Promise<boolean> {

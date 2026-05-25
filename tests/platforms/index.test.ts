@@ -10,6 +10,16 @@ describe("getPlatformAdapter", () => {
     expect(getPlatformAdapter("douyin").platform).toBe("douyin");
   });
 
+  test("exposes image and video draft capabilities per platform", () => {
+    expect(getPlatformAdapter("xiaohongshu").capabilities).toEqual({
+      imagePostDraft: true
+    });
+    expect(getPlatformAdapter("douyin").capabilities).toEqual({
+      imagePostDraft: true,
+      videoPostDraft: true
+    });
+  });
+
   test("rejects an unknown platform", () => {
     expect(() => getPlatformAdapter("wechat" as never)).toThrow("Unsupported platform: wechat");
   });

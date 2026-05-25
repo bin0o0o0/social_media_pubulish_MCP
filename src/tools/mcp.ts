@@ -2,9 +2,11 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import {
   checkLoginStatusInputSchema,
   createImagePostDraftInputSchema,
+  createVideoPostDraftInputSchema,
   openLoginPageInputSchema,
   type CheckLoginStatusInput,
   type CreateImagePostDraftInput,
+  type CreateVideoPostDraftInput,
   type OpenLoginPageInput
 } from "../core/schemas.js";
 import { getPlatformAdapter } from "../platforms/index.js";
@@ -61,7 +63,40 @@ export async function handleCreateImagePostDraft(
 ): Promise<CallToolResult> {
   try {
     const parsed = createImagePostDraftInputSchema.parse(input);
+    if (!adapter.createImagePostDraft) {
+      return createTextJsonResult({
+        platform: parsed.platform,
+        status: "failed",
+        message: `Platform ${parsed.platform} does not support image post drafts.`
+      });
+    }
+
     const result = await adapter.createImagePostDraft(parsed);
+    return createTextJsonResult(result);
+  } catch (error) {
+    return createTextJsonResult({
+      platform: input.platform,
+      status: "failed",
+      message: errorMessage(error)
+    });
+  }
+}
+
+export async function handleCreateVideoPostDraft(
+  input: CreateVideoPostDraftInput,
+  adapter: PlatformAdapter = getPlatformAdapter(input.platform)
+): Promise<CallToolResult> {
+  try {
+    const parsed = createVideoPostDraftInputSchema.parse(input);
+    if (!adapter.createVideoPostDraft) {
+      return createTextJsonResult({
+        platform: parsed.platform,
+        status: "failed",
+        message: `Platform ${parsed.platform} does not support video post drafts.`
+      });
+    }
+
+    const result = await adapter.createVideoPostDraft(parsed);
     return createTextJsonResult(result);
   } catch (error) {
     return createTextJsonResult({

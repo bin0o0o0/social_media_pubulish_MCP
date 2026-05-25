@@ -30,6 +30,7 @@ const loggedInSignals = [
 
 export const xiaohongshuAdapter: PlatformAdapter = {
   platform: "xiaohongshu",
+  capabilities: { imagePostDraft: true },
   async checkLoginStatus(): Promise<LoginStatusResult> {
     const { page } = await getBrowserSession("xiaohongshu");
     await safeGoto(page, homeUrl);

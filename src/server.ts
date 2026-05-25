@@ -5,11 +5,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   checkLoginStatusInputSchema,
   createImagePostDraftInputSchema,
+  createVideoPostDraftInputSchema,
   openLoginPageInputSchema
 } from "./core/schemas.js";
 import {
   handleCheckLoginStatus,
   handleCreateImagePostDraft,
+  handleCreateVideoPostDraft,
   handleOpenLoginPage
 } from "./tools/mcp.js";
 
@@ -47,6 +49,16 @@ export function createServer(): McpServer {
       inputSchema: createImagePostDraftInputSchema
     },
     async (args) => handleCreateImagePostDraft(args)
+  );
+
+  server.registerTool(
+    "create_video_post_draft",
+    {
+      title: "Create Video Post Draft",
+      description: "Create a video-post draft from prepared title, content, tags, and a local video path.",
+      inputSchema: createVideoPostDraftInputSchema
+    },
+    async (args) => handleCreateVideoPostDraft(args)
   );
 
   return server;
