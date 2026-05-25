@@ -110,3 +110,4 @@ npm run dev
 - Script: `npm run smoke:xiaohongshu`
 
 复用已有登录态时，保持同一个 `SOCIAL_MEDIA_MCP_PROFILE_SUFFIX` 即可，避免重复扫码登录。这个 skill 不依赖特定 agent，任何能执行本仓库 Node/Playwright 命令的环境都可以使用。
+默认情况下，smoke 脚本在保存草稿后会保留测试浏览器窗口，方便继续手动检查或发布；对应的命令进程也会继续保持，直到你手动关闭该浏览器窗口或终止脚本。

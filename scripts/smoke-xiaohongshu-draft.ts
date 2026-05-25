@@ -1,4 +1,5 @@
 import { closeBrowserSessions } from "../src/core/browser.js";
+import { shouldCloseBrowserSessionsOnExit } from "../src/core/smoke.js";
 import {
   handleCheckLoginStatus,
   handleCreateImagePostDraft,
@@ -140,5 +141,7 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    await closeBrowserSessions().catch(() => undefined);
+    if (shouldCloseBrowserSessionsOnExit()) {
+      await closeBrowserSessions().catch(() => undefined);
+    }
   });
