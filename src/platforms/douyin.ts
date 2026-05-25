@@ -90,6 +90,10 @@ const uploadCompleteSelectors = [
   "text=/上传成功|上传完成|处理完成|发布设置/"
 ];
 
+const uploadStartSelectors = [
+  "text=/点击上传|直接将视频文件拖入此区域|上传视频|上传图文/"
+];
+
 export const douyinAdapter: PlatformAdapter = {
   platform: "douyin",
   capabilities: { imagePostDraft: true, videoPostDraft: true },
@@ -179,10 +183,13 @@ export const douyinAdapter: PlatformAdapter = {
     const savedDraft = await saveDouyinDraft(page);
 
     if (!uploaded || !uploadReady || !metadata.filledTitle || !metadata.filledContent || !savedDraft) {
+      const uploadInputStillVisible = await hasAnyVisible(page, uploadStartSelectors);
       return {
         platform: "douyin",
         status: "failed",
-        message: `Douyin video draft was not completed. uploaded=${uploaded}, uploadReady=${uploadReady}, title=${metadata.filledTitle}, content=${metadata.filledContent}, savedDraft=${savedDraft}.`
+        message: uploadInputStillVisible
+          ? `Douyin video draft was not completed because the page did not enter the video editor after selecting the file. The video may not satisfy Douyin upload requirements. uploaded=${uploaded}, uploadReady=${uploadReady}, title=${metadata.filledTitle}, content=${metadata.filledContent}, savedDraft=${savedDraft}.`
+          : `Douyin video draft was not completed. uploaded=${uploaded}, uploadReady=${uploadReady}, title=${metadata.filledTitle}, content=${metadata.filledContent}, savedDraft=${savedDraft}.`
       };
     }
 
@@ -206,12 +213,6 @@ async function hasLoginText(page: Page): Promise<boolean> {
 }
 
 async function openUploadPage(page: Page, mode: "image" | "video"): Promise<void> {
-  await safeGoto(page, uploadUrl);
-
-  if (await hasFileInput(page)) {
-    return;
-  }
-
   await safeGoto(page, homeUrl);
   const clicked = await clickCreatorEntry(page, mode === "image" ? ["发布图文", "图文"] : ["发布视频", "视频"]);
 
@@ -219,6 +220,13 @@ async function openUploadPage(page: Page, mode: "image" | "video"): Promise<void
     await page.waitForLoadState("domcontentloaded", { timeout: 10_000 }).catch(() => undefined);
     await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => undefined);
     await page.waitForTimeout(1_000);
+    return;
+  }
+
+  await safeGoto(page, uploadUrl);
+
+  if (await hasFileInput(page)) {
+    return;
   }
 }
 
