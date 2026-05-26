@@ -4,10 +4,12 @@ import {
   createImagePostDraftInputSchema,
   createVideoPostDraftInputSchema,
   openLoginPageInputSchema,
+  submitVerificationCodeInputSchema,
   type CheckLoginStatusInput,
   type CreateImagePostDraftInput,
   type CreateVideoPostDraftInput,
-  type OpenLoginPageInput
+  type OpenLoginPageInput,
+  type SubmitVerificationCodeInput
 } from "../core/schemas.js";
 import { getPlatformAdapter } from "../platforms/index.js";
 import type { PlatformAdapter } from "../platforms/types.js";
@@ -97,6 +99,31 @@ export async function handleCreateVideoPostDraft(
     }
 
     const result = await adapter.createVideoPostDraft(parsed);
+    return createTextJsonResult(result);
+  } catch (error) {
+    return createTextJsonResult({
+      platform: input.platform,
+      status: "failed",
+      message: errorMessage(error)
+    });
+  }
+}
+
+export async function handleSubmitVerificationCode(
+  input: SubmitVerificationCodeInput,
+  adapter: PlatformAdapter = getPlatformAdapter(input.platform)
+): Promise<CallToolResult> {
+  try {
+    const parsed = submitVerificationCodeInputSchema.parse(input);
+    if (!adapter.submitVerificationCode) {
+      return createTextJsonResult({
+        platform: parsed.platform,
+        status: "failed",
+        message: `Platform ${parsed.platform} does not support verification code submission.`
+      });
+    }
+
+    const result = await adapter.submitVerificationCode(parsed);
     return createTextJsonResult(result);
   } catch (error) {
     return createTextJsonResult({

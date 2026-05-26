@@ -1,7 +1,8 @@
 import type {
   CreateImagePostDraftInput,
   CreateVideoPostDraftInput,
-  Platform
+  Platform,
+  SubmitVerificationCodeInput
 } from "../core/schemas.js";
 
 export type LoginStatusResult = {
@@ -18,17 +19,24 @@ export type OpenLoginPageResult = {
 
 export type PostDraftResult = {
   platform: Platform;
-  status: "draft_created" | "login_required" | "failed";
+  status: "draft_created" | "login_required" | "verification_required" | "failed";
   message: string;
 };
 
 export type CreateImagePostDraftResult = PostDraftResult;
 export type CreateVideoPostDraftResult = PostDraftResult;
 
+export type SubmitVerificationCodeResult = {
+  platform: Platform;
+  status: "verified" | "failed";
+  message: string;
+};
+
 export type PlatformCapabilities = {
   imagePostDraft?: true;
   videoPostDraft?: true;
   articlePostDraft?: true;
+  verificationCodeSubmission?: true;
 };
 
 export type PlatformAdapter = {
@@ -38,4 +46,5 @@ export type PlatformAdapter = {
   openLoginPage(): Promise<OpenLoginPageResult>;
   createImagePostDraft?(input: CreateImagePostDraftInput): Promise<CreateImagePostDraftResult>;
   createVideoPostDraft?(input: CreateVideoPostDraftInput): Promise<CreateVideoPostDraftResult>;
+  submitVerificationCode?(input: SubmitVerificationCodeInput): Promise<SubmitVerificationCodeResult>;
 };

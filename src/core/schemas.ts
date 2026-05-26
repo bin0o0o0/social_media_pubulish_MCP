@@ -4,6 +4,7 @@ import { z } from "zod";
 
 const supportedImageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 const supportedVideoExtensions = new Set([".mp4", ".mov", ".m4v"]);
+const coverOrientationSchema = z.enum(["vertical", "horizontal"]);
 
 export const platformSchema = z.enum(["xiaohongshu", "douyin"]);
 
@@ -13,6 +14,14 @@ export const checkLoginStatusInputSchema = z.object({
 
 export const openLoginPageInputSchema = z.object({
   platform: platformSchema
+});
+
+export const submitVerificationCodeInputSchema = z.object({
+  platform: z.literal("douyin"),
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{4,8}$/, "verification code must be 4 to 8 digits")
 });
 
 export const createImagePostDraftInputSchema = z.object({
@@ -71,11 +80,36 @@ export const createVideoPostDraftInputSchema = z.object({
         });
       }
     }),
+  coverImage: z
+    .string()
+    .trim()
+    .min(1, "cover image path is required")
+    .superRefine((imagePath, ctx) => {
+      const extension = extname(imagePath).toLowerCase();
+
+      if (!supportedImageExtensions.has(extension)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `unsupported image extension: ${extension || "(none)"}`
+        });
+      }
+
+      if (!existsSync(imagePath)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `image does not exist: ${imagePath}`
+        });
+      }
+    })
+    .optional(),
+  coverOrientation: coverOrientationSchema.default("vertical").optional(),
   tags: z.array(z.string().trim().min(1)).optional()
 });
 
 export type Platform = z.infer<typeof platformSchema>;
 export type CheckLoginStatusInput = z.infer<typeof checkLoginStatusInputSchema>;
 export type OpenLoginPageInput = z.infer<typeof openLoginPageInputSchema>;
+export type SubmitVerificationCodeInput = z.infer<typeof submitVerificationCodeInputSchema>;
 export type CreateImagePostDraftInput = z.infer<typeof createImagePostDraftInputSchema>;
 export type CreateVideoPostDraftInput = z.infer<typeof createVideoPostDraftInputSchema>;
+export type CoverOrientation = z.infer<typeof coverOrientationSchema>;

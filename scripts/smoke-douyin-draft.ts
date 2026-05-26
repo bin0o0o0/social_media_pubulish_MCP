@@ -1,146 +1,133 @@
-import { closeBrowserSessions } from "../src/core/browser.js";
-import { shouldCloseBrowserSessionsOnExit } from "../src/core/smoke.js";
+import process from "node:process";
 import {
-  handleCheckLoginStatus,
-  handleCreateImagePostDraft,
-  handleCreateVideoPostDraft,
-  handleOpenLoginPage
-} from "../src/tools/mcp.js";
+  getDouyinSmokeSessionStatus,
+  runDouyinSmokeWorker,
+  startDouyinSmokeSession,
+  stopDouyinSmokeSession,
+  submitDouyinSmokeSessionCode
+} from "../src/core/douyin-smoke-controller.js";
 
 const DEFAULT_IMAGE_PATH =
-  "D:/work/2026/code/social_media_skill/.social-media-mcp/fixtures/test-image.png";
+  "D:/work/2026/code/life/social_media_skill/.social-media-mcp/fixtures/test-image.png";
 const DEFAULT_VIDEO_PATH =
-  "D:/work/2026/code/social_media_skill/.social-media-mcp/fixtures/test-video.mp4";
+  "D:/work/2026/code/life/social_media_skill/.social-media-mcp/fixtures/test-video.mp4";
 const DEFAULT_TITLE = "douyin smoke draft";
 const DEFAULT_CONTENT = "Smoke-test draft body for Douyin automation.";
 const DEFAULT_TAGS = ["mcp", "douyin", "draft-test"];
 
 async function main(): Promise<void> {
-  const profileSuffix = process.env.SOCIAL_MEDIA_MCP_PROFILE_SUFFIX?.trim();
-  const mode = parseMode(process.env.DOUYIN_SMOKE_MODE);
-  const title = process.env.DOUYIN_TITLE?.trim() || DEFAULT_TITLE;
-  const content = process.env.DOUYIN_CONTENT?.trim() || DEFAULT_CONTENT;
-  const imagePath = process.env.DOUYIN_IMAGE_PATH?.trim() || DEFAULT_IMAGE_PATH;
-  const videoPath = process.env.DOUYIN_VIDEO_PATH?.trim() || DEFAULT_VIDEO_PATH;
-  const tags = parseTags(process.env.DOUYIN_TAGS);
-  const autoOpenLogin = process.env.DOUYIN_AUTO_OPEN_LOGIN !== "0";
-  const pollAttempts = Number.parseInt(process.env.DOUYIN_LOGIN_POLL_ATTEMPTS ?? "60", 10);
+  const command = process.argv[2] ?? "start";
+  const workspaceRoot = process.cwd();
 
-  console.log(
-    JSON.stringify(
-      {
-        step: "start",
-        platform: "douyin",
+  switch (command) {
+    case "start": {
+      const mode = parseMode(process.env.DOUYIN_SMOKE_MODE);
+      const record = startDouyinSmokeSession({
+        workspaceRoot,
+        profileSuffix: process.env.SOCIAL_MEDIA_MCP_PROFILE_SUFFIX?.trim() || null,
         mode,
-        profileSuffix: profileSuffix || null,
-        imagePath: mode === "image" ? imagePath : null,
-        videoPath: mode === "video" ? videoPath : null,
-        autoOpenLogin,
-        pollAttempts
-      },
-      null,
-      2
-    )
-  );
+        draftInput: {
+          title: process.env.DOUYIN_TITLE?.trim() || DEFAULT_TITLE,
+          content: process.env.DOUYIN_CONTENT?.trim() || DEFAULT_CONTENT,
+          imagePaths: parseImagePaths(process.env.DOUYIN_IMAGE_PATHS, process.env.DOUYIN_IMAGE_PATH),
+          videoPath: mode === "video" ? process.env.DOUYIN_VIDEO_PATH?.trim() || DEFAULT_VIDEO_PATH : null,
+          coverImagePath: mode === "video" ? process.env.DOUYIN_VIDEO_COVER_PATH?.trim() || null : null,
+          coverOrientation: parseCoverOrientation(process.env.DOUYIN_VIDEO_COVER_ORIENTATION),
+          tags: parseTags(process.env.DOUYIN_TAGS)
+        },
+        settings: {
+          autoOpenLogin: process.env.DOUYIN_AUTO_OPEN_LOGIN !== "0",
+          pollAttempts: Number.parseInt(process.env.DOUYIN_LOGIN_POLL_ATTEMPTS ?? "60", 10),
+          loginInitialWaitMs: Number.parseInt(process.env.DOUYIN_LOGIN_INITIAL_WAIT_MS ?? "0", 10)
+        }
+      });
+      console.log(JSON.stringify(record, null, 2));
+      return;
+    }
+    case "status": {
+      const sessionId = requireSessionId(process.argv[3]);
+      const record = getDouyinSmokeSessionStatus(workspaceRoot, sessionId);
+      if (!record) {
+        throw new Error(`Douyin smoke session not found: ${sessionId}`);
+      }
+      console.log(JSON.stringify(record, null, 2));
+      return;
+    }
+    case "watch": {
+      const sessionId = requireSessionId(process.argv[3]);
+      const intervalMs = Number.parseInt(process.env.DOUYIN_WATCH_INTERVAL_MS ?? "1000", 10);
+      const timeoutMs = Number.parseInt(process.env.DOUYIN_WATCH_TIMEOUT_MS ?? "600000", 10);
+      const deadline = Date.now() + timeoutMs;
 
-  let loginStatus = await checkLoginStatus();
+      while (Date.now() < deadline) {
+        const record = getDouyinSmokeSessionStatus(workspaceRoot, sessionId);
+        if (!record) {
+          throw new Error(`Douyin smoke session not found: ${sessionId}`);
+        }
 
-  if (!loginStatus.loggedIn && autoOpenLogin) {
-    console.log(JSON.stringify(await openLoginPage(), null, 2));
-    loginStatus = await pollLoginStatus(pollAttempts);
+        console.log(JSON.stringify(record, null, 2));
+
+        if (record.status !== "running") {
+          return;
+        }
+
+        await sleep(intervalMs);
+      }
+
+      throw new Error(`Timed out while watching Douyin smoke session: ${sessionId}`);
+    }
+    case "submit": {
+      const sessionId = requireSessionId(process.argv[3]);
+      const code = requireCode(process.argv[4]);
+      const record = submitDouyinSmokeSessionCode(workspaceRoot, sessionId, code);
+      console.log(JSON.stringify(record, null, 2));
+      return;
+    }
+    case "stop": {
+      const sessionId = requireSessionId(process.argv[3]);
+      const record = stopDouyinSmokeSession(workspaceRoot, sessionId);
+      console.log(JSON.stringify(record, null, 2));
+      return;
+    }
+    case "worker": {
+      const sessionId = requireSessionId(process.argv[3]);
+      await runDouyinSmokeWorker(workspaceRoot, sessionId);
+      return;
+    }
+    default:
+      throw new Error(`Unsupported command: ${command}`);
   }
+}
 
-  console.log(JSON.stringify(loginStatus, null, 2));
-
-  if (isProfileLocked(loginStatus)) {
-    console.error(
-      [
-        "The Douyin profile is locked by another Google Chrome for Testing window.",
-        "Close the existing testing window for the same SOCIAL_MEDIA_MCP_PROFILE_SUFFIX and rerun the script."
-      ].join(" ")
-    );
-    process.exitCode = 3;
-    return;
+function requireSessionId(value: string | undefined): string {
+  const sessionId = value?.trim();
+  if (!sessionId) {
+    throw new Error("A Douyin smoke session id is required.");
   }
+  return sessionId;
+}
 
-  if (!loginStatus.loggedIn) {
-    process.exitCode = 2;
-    return;
+function requireCode(value: string | undefined): string {
+  const code = value?.trim();
+  if (!code) {
+    throw new Error("A verification code is required.");
   }
-
-  const draftResult =
-    mode === "video"
-      ? await createVideoDraft({ title, content, videoPath, tags })
-      : await createImageDraft({ title, content, imagePath, tags });
-  console.log(JSON.stringify(draftResult, null, 2));
-
-  process.exitCode = draftResult.status === "draft_created" ? 0 : 1;
+  return code;
 }
 
-async function checkLoginStatus() {
-  return parseToolResult(await handleCheckLoginStatus({ platform: "douyin" }));
-}
+function parseImagePaths(pathsValue: string | undefined, singleValue: string | undefined): string[] {
+  if (pathsValue) {
+    const parsed = pathsValue
+      .split("|")
+      .map((value) => value.trim())
+      .filter(Boolean);
 
-async function openLoginPage() {
-  return parseToolResult(await handleOpenLoginPage({ platform: "douyin" }));
-}
-
-async function createImageDraft(input: {
-  title: string;
-  content: string;
-  imagePath: string;
-  tags: string[];
-}) {
-  return parseToolResult(
-    await handleCreateImagePostDraft({
-      platform: "douyin",
-      title: input.title,
-      content: input.content,
-      images: [input.imagePath],
-      tags: input.tags
-    })
-  );
-}
-
-async function createVideoDraft(input: {
-  title: string;
-  content: string;
-  videoPath: string;
-  tags: string[];
-}) {
-  return parseToolResult(
-    await handleCreateVideoPostDraft({
-      platform: "douyin",
-      title: input.title,
-      content: input.content,
-      video: input.videoPath,
-      tags: input.tags
-    })
-  );
-}
-
-async function pollLoginStatus(attempts: number) {
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    await sleep(5_000);
-    const status = await checkLoginStatus();
-    console.log(JSON.stringify({ step: "poll-login", attempt, status }, null, 2));
-
-    if (status.loggedIn) {
-      return status;
+    if (parsed.length > 0) {
+      return parsed;
     }
   }
 
-  return checkLoginStatus();
-}
-
-function parseToolResult(result: { content: Array<{ type: string; text?: string }> }) {
-  const item = result.content[0];
-
-  if (!item || item.type !== "text" || !item.text) {
-    throw new Error("Expected text MCP content.");
-  }
-
-  return JSON.parse(item.text);
+  return [singleValue?.trim() || DEFAULT_IMAGE_PATH];
 }
 
 function parseTags(value: string | undefined): string[] {
@@ -158,21 +145,15 @@ function parseMode(value: string | undefined): "image" | "video" {
   return value === "video" ? "video" : "image";
 }
 
+function parseCoverOrientation(value: string | undefined): "vertical" | "horizontal" {
+  return value === "horizontal" ? "horizontal" : "vertical";
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function isProfileLocked(status: { message?: string }) {
-  return (status.message || "").includes("existing browser session");
-}
-
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    if (shouldCloseBrowserSessionsOnExit()) {
-      await closeBrowserSessions().catch(() => undefined);
-    }
-  });
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
