@@ -18,7 +18,7 @@ export type OpenLoginPageResult = {
 
 export type PostDraftResult = {
   platform: Platform;
-  status: "draft_created" | "login_required" | "failed";
+  status: "draft_created" | "published" | "login_required" | "failed";
   message: string;
 };
 

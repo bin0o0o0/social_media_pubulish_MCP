@@ -74,7 +74,7 @@ async function main(): Promise<void> {
       : await createImageDraft({ title, content, imagePath, tags });
   console.log(JSON.stringify(draftResult, null, 2));
 
-  process.exitCode = draftResult.status === "draft_created" ? 0 : 1;
+  process.exitCode = draftResult.status === "draft_created" || draftResult.status === "published" ? 0 : 1;
 }
 
 async function checkLoginStatus() {
