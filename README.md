@@ -1,38 +1,63 @@
-# social_media_pubulish_MCP
+﻿# social_media_pubulish_MCP
 
-一个轻量级 MCP Server，用 Playwright 把已经准备好的文字、图片或视频自动填写到社交媒体创作者后台，并创建草稿。
+一个轻量级 MCP Server，用 Playwright 在可见浏览器里自动操作社交媒体创作者后台。
 
-本项目只做正常可见浏览器自动化，不生成内容、不绕过验证码、不逆向私有接口，默认不点击最终发布按钮。
+当前能力重点：
+
+- 小红书图文：创建草稿，不点击最终发布。
+- 抖音图文：创建草稿，不点击最终发布。
+- 抖音视频：上传完成后选择“仅自己可见”，再点击发布。
+
+项目只使用正常浏览器自动化，不生成内容，不绕过验证码，不逆向私有接口。账号登录、扫码、验证码等都需要按平台正常流程人工完成。
 
 ## 平台能力
 
-| 平台 | 图文草稿 | 视频草稿 | 文章草稿 |
+| 平台 | 图文草稿 | 视频流程 | 文章草稿 |
 | --- | --- | --- | --- |
 | 小红书 | 支持 | 不支持 | 不支持 |
-| 抖音 | 支持 | 支持 | 不支持 |
+| 抖音 | 支持 | 支持，仅自己可见后发布 | 不支持 |
 | 知乎 | 预留 | 不支持 | 计划中 |
 | B站 | 计划中 | 计划中 | 不支持 |
 | CSDN | 预留 | 不支持 | 计划中 |
 | 微信公众号 | 预留 | 不支持 | 计划中 |
 
-后续平台通过 adapter capability 扩展，不需要改乱已经可用的小红书图文流程。
+后续平台通过 adapter capability 扩展，避免改乱已经可用的小红书和抖音流程。
+
+## 环境要求
+
+- Node.js >= 20
+- npm
+- 可正常访问目标平台网页
+- 首次运行需要安装 Playwright Chromium
+
+本项目当前按 npm 方式部署和运行，不需要 Docker。
 
 ## 安装
 
-```bash
+```powershell
 npm install
 npm run install-browsers
 ```
 
-## 运行
+如果 `playwright install chromium` 因网络失败，请先修复本机网络或代理后再重试。
 
-```bash
+## 启动 MCP Server
+
+```powershell
 npm run dev
 ```
 
-服务通过 stdio 暴露 MCP 能力。浏览器会话保存在 `.social-media-mcp/`，每个平台使用独立用户数据目录。可以设置 `SOCIAL_MEDIA_MCP_PROFILE_SUFFIX` 复用同一套登录态。
+MCP Server 通过 stdio 暴露工具能力。浏览器用户数据保存在 `.social-media-mcp/` 目录下，每个平台使用独立 profile。
+
+需要复用登录态时，固定设置同一个 profile 后缀：
+
+```powershell
+$env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
+```
 
 ## MCP Client 配置示例
+
+把 `cwd` 改成你自己的项目目录：
 
 ```json
 {
@@ -46,29 +71,35 @@ npm run dev
 }
 ```
 
-## 工具
+## 工具说明
 
 ### `check_login_status`
 
+检查平台是否已经登录。
+
 ```json
 {
   "platform": "douyin"
 }
 ```
 
-支持的平台为 `xiaohongshu` 和 `douyin`。
+支持平台：`xiaohongshu`、`douyin`。
 
 ### `open_login_page`
 
+打开平台登录页或创作者中心页面。登录、扫码和验证码需要人工完成。
+
 ```json
 {
   "platform": "douyin"
 }
 ```
 
-会打开一个可见 Chromium 窗口。请按平台正常流程手动扫码或登录。
-
 ### `create_image_post_draft`
+
+创建图文草稿。小红书和抖音均支持。
+
+小红书示例：
 
 ```json
 {
@@ -80,7 +111,7 @@ npm run dev
 }
 ```
 
-抖音图文草稿示例：
+抖音图文示例：
 
 ```json
 {
@@ -97,12 +128,12 @@ npm run dev
 - `title` 必须非空。
 - `content` 必须非空。
 - `images` 至少包含一个存在的本地图片路径。
-- 支持图片格式：`.jpg`, `.jpeg`, `.png`, `.webp`。
-- `tags` 可选，工具会统一转换为话题格式并填入内容。
+- 支持图片格式：`.jpg`、`.jpeg`、`.png`、`.webp`。
+- `tags` 可选，会转换为话题格式并填入内容。
 
 ### `create_video_post_draft`
 
-首版仅支持抖音：
+首版仅支持抖音视频。注意：为了适配抖音当前页面，视频流程不是保存草稿，而是在上传完成后选择“仅自己可见”并发布。
 
 ```json
 {
@@ -120,44 +151,105 @@ npm run dev
 - `title` 必须非空。
 - `content` 必须非空。
 - `video` 必须是存在的本地视频路径。
-- 支持视频格式：`.mp4`, `.mov`, `.m4v`。
+- 支持视频格式：`.mp4`、`.mov`、`.m4v`。
+- 视频本身必须满足抖音上传要求，例如时长、格式、大小等。
+
+成功结果示例：
+
+```json
+{
+  "platform": "douyin",
+  "status": "published",
+  "message": "Douyin video post was published with private visibility."
+}
+```
 
 ## 登录和使用流程
 
-1. 调用 `open_login_page` 打开对应平台创作者页面。
-2. 在可见浏览器窗口中完成手动登录。
+1. 调用 `open_login_page` 打开对应平台页面。
+2. 在可见浏览器窗口中手动登录。
 3. 调用 `check_login_status` 检查登录状态。
-4. 调用 `create_image_post_draft` 或 `create_video_post_draft` 创建草稿。
-5. 在平台页面人工检查草稿内容，再决定是否发布。
+4. 图文内容调用 `create_image_post_draft`。
+5. 抖音视频调用 `create_video_post_draft`，工具会上传视频、等待上传完成、选择“仅自己可见”并发布。
+
+不要在同一个 profile 上同时启动多个浏览器自动化进程，否则可能出现 profile 锁定或登录态异常。
 
 ## Smoke 联调
 
-小红书图文：
+### 小红书图文草稿
 
-```bash
+```powershell
 $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='smoketest'
-npm run smoke:xiaohongshu
+npm.cmd run smoke:xiaohongshu
 ```
 
-抖音图文：
+### 抖音图文草稿
 
-```bash
-$env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='smoketest'
+```powershell
+$env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
 $env:DOUYIN_SMOKE_MODE='image'
 $env:DOUYIN_IMAGE_PATH='D:/absolute/path/cover.png'
-npm run smoke:douyin
+npm.cmd run smoke:douyin
 ```
 
-抖音视频：
+### 抖音视频仅自己可见发布
 
-```bash
-$env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='smoketest'
+```powershell
+$env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
+$env:SOCIAL_MEDIA_MCP_CLOSE_BROWSER_ON_EXIT='0'
+$env:DOUYIN_VIDEO_UPLOAD_COMPLETE_TIMEOUT_MS='240000'
+$env:DOUYIN_VIDEO_UPLOAD_SETTLE_MS='3000'
 $env:DOUYIN_SMOKE_MODE='video'
 $env:DOUYIN_VIDEO_PATH='D:/absolute/path/video.mp4'
-npm run smoke:douyin
+$env:DOUYIN_TITLE='douyin private publish smoke'
+$env:DOUYIN_CONTENT='Douyin private publish smoke body. Testing upload completion, private visibility, publish, and topic tags.'
+$env:DOUYIN_TAGS='mcp,douyin,private-publish'
+npm.cmd run smoke:douyin
 ```
 
-默认情况下 smoke 脚本会在未登录时打开登录页并轮询登录状态。设置 `DOUYIN_AUTO_OPEN_LOGIN=0` 或 `XHS_AUTO_OPEN_LOGIN=0` 可关闭自动打开登录页。
+默认情况下，smoke 脚本会在未登录时打开登录页并轮询登录状态。
+
+可选环境变量：
+
+- `DOUYIN_AUTO_OPEN_LOGIN=0`：不自动打开抖音登录页。
+- `XHS_AUTO_OPEN_LOGIN=0`：不自动打开小红书登录页。
+- `SOCIAL_MEDIA_MCP_CLOSE_BROWSER_ON_EXIT=0`：脚本结束后保留浏览器窗口，方便观察页面。
+
+## 抖音视频上传完成判定
+
+抖音视频不能靠固定等待时间判断上传完成。当前流程按页面文字判断：
+
+1. 先看到上传过程信号。
+2. 再看到“预览视频”。
+3. 同时不再看到上传过程信号。
+
+上传过程信号包括：
+
+- “上传过程中请不要删除/移动文件”
+- “已上传”
+- “当前速度”
+- “剩余时间”
+- “取消上传”
+- “上传中”
+- “正在上传”
+- “处理中”
+- “转码中”
+- 百分比进度，例如 `8%`
+
+只有满足完成条件后，才会继续填写内容、选择“仅自己可见”并点击最终发布按钮。
+
+更详细的真实测试流程见 [skills/douyin-private-video-publish/SKILL.md](skills/douyin-private-video-publish/SKILL.md)。
+
+## 开发验证
+
+修改代码后至少运行：
+
+```powershell
+npm.cmd run typecheck
+npm.cmd test
+```
+
+如果改动影响真实页面流程，再运行对应 smoke 命令。
 
 ## 安全边界
 
@@ -165,7 +257,8 @@ npm run smoke:douyin
 - 不保存用户名或密码。
 - 不绕过验证码或平台验证。
 - 不使用逆向得到的私有接口。
-- 默认只创建草稿，不点击最终发布按钮。
+- 图文流程默认只创建草稿。
+- 抖音视频流程会发布，但会先选择“仅自己可见”。
 
 ## 参考
 
