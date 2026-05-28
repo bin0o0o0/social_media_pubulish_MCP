@@ -6,6 +6,7 @@ import {
   handleCreateVideoPostDraft,
   handleOpenLoginPage
 } from "../src/tools/mcp.js";
+import { readFileSync } from "node:fs";
 
 const DEFAULT_IMAGE_PATH =
   "D:/work/2026/code/social_media_skill/.social-media-mcp/fixtures/test-image.png";
@@ -15,16 +16,24 @@ const DEFAULT_TITLE = "douyin smoke draft";
 const DEFAULT_CONTENT = "Smoke-test draft body for Douyin automation.";
 const DEFAULT_TAGS = ["mcp", "douyin", "draft-test"];
 
+type SmokeInputFile = {
+  title?: string;
+  content?: string;
+  tags?: string[] | string;
+};
+
 async function main(): Promise<void> {
   const profileSuffix = process.env.SOCIAL_MEDIA_MCP_PROFILE_SUFFIX?.trim();
   const mode = parseMode(process.env.DOUYIN_SMOKE_MODE);
-  const title = process.env.DOUYIN_TITLE?.trim() || DEFAULT_TITLE;
-  const content = process.env.DOUYIN_CONTENT?.trim() || DEFAULT_CONTENT;
   const imagePath = process.env.DOUYIN_IMAGE_PATH?.trim() || DEFAULT_IMAGE_PATH;
   const videoPath = process.env.DOUYIN_VIDEO_PATH?.trim() || DEFAULT_VIDEO_PATH;
-  const tags = parseTags(process.env.DOUYIN_TAGS);
+  const inputFile = readSmokeInputFile(process.env.DOUYIN_SMOKE_INPUT_FILE);
+  const title = resolveSmokeText(process.env.DOUYIN_TITLE, inputFile?.title) || DEFAULT_TITLE;
+  const content = resolveSmokeText(process.env.DOUYIN_CONTENT, inputFile?.content) || DEFAULT_CONTENT;
+  const tags = resolveSmokeTags(process.env.DOUYIN_TAGS, inputFile?.tags);
   const autoOpenLogin = process.env.DOUYIN_AUTO_OPEN_LOGIN !== "0";
   const pollAttempts = Number.parseInt(process.env.DOUYIN_LOGIN_POLL_ATTEMPTS ?? "60", 10);
+  const pollIntervalMs = Number.parseInt(process.env.DOUYIN_LOGIN_POLL_INTERVAL_MS ?? "30000", 10);
 
   console.log(
     JSON.stringify(
@@ -35,8 +44,10 @@ async function main(): Promise<void> {
         profileSuffix: profileSuffix || null,
         imagePath: mode === "image" ? imagePath : null,
         videoPath: mode === "video" ? videoPath : null,
+        inputFile: process.env.DOUYIN_SMOKE_INPUT_FILE?.trim() || null,
         autoOpenLogin,
-        pollAttempts
+        pollAttempts,
+        pollIntervalMs
       },
       null,
       2
@@ -47,7 +58,7 @@ async function main(): Promise<void> {
 
   if (!loginStatus.loggedIn && autoOpenLogin) {
     console.log(JSON.stringify(await openLoginPage(), null, 2));
-    loginStatus = await pollLoginStatus(pollAttempts);
+    loginStatus = await pollLoginStatus(pollAttempts, pollIntervalMs);
   }
 
   console.log(JSON.stringify(loginStatus, null, 2));
@@ -119,9 +130,9 @@ async function createVideoDraft(input: {
   );
 }
 
-async function pollLoginStatus(attempts: number) {
+async function pollLoginStatus(attempts: number, intervalMs: number) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    await sleep(5_000);
+    await sleep(intervalMs);
     const status = await checkLoginStatus();
     console.log(JSON.stringify({ step: "poll-login", attempt, status }, null, 2));
 
@@ -152,6 +163,39 @@ function parseTags(value: string | undefined): string[] {
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
+}
+
+function resolveSmokeText(envValue: string | undefined, fileValue: string | undefined): string | undefined {
+  return envValue?.trim() || fileValue?.trim() || undefined;
+}
+
+function resolveSmokeTags(envValue: string | undefined, fileValue: SmokeInputFile["tags"]): string[] {
+  const parsedEnv = parseTags(envValue);
+
+  if (envValue?.trim()) {
+    return parsedEnv;
+  }
+
+  if (Array.isArray(fileValue)) {
+    return fileValue.map((tag) => tag.trim()).filter(Boolean);
+  }
+
+  if (typeof fileValue === "string") {
+    return parseTags(fileValue);
+  }
+
+  return DEFAULT_TAGS;
+}
+
+function readSmokeInputFile(filePath: string | undefined): SmokeInputFile | null {
+  const trimmedPath = filePath?.trim();
+
+  if (!trimmedPath) {
+    return null;
+  }
+
+  const raw = readFileSync(trimmedPath, "utf8");
+  return JSON.parse(raw) as SmokeInputFile;
 }
 
 function parseMode(value: string | undefined): "image" | "video" {

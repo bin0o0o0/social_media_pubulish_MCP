@@ -71,13 +71,6 @@ const tagInputSelectors = [
   "[contenteditable='true'][placeholder*='\u8bdd\u9898']"
 ];
 
-const draftSelectors = [
-  "button:has-text('\u4fdd\u5b58\u8349\u7a3f')",
-  "button:has-text('\u5b58\u8349\u7a3f')",
-  "button:has-text('\u6682\u5b58')",
-  "text=/\u4fdd\u5b58\u8349\u7a3f|\u5b58\u8349\u7a3f|\u6682\u5b58/"
-];
-
 const privateVisibilitySelectors = [
   "label:has-text('\u4ec5\u81ea\u5df1\u53ef\u89c1')",
   "button:has-text('\u4ec5\u81ea\u5df1\u53ef\u89c1')",
@@ -179,20 +172,21 @@ export const douyinAdapter: PlatformAdapter = {
     await dismissDouyinOverlays(page);
     await waitForAnyVisible(page, metadataReadySelectors, 15_000);
     const metadata = await fillDouyinMetadata(page, input.title, input.content, input.tags);
-    const savedDraft = await saveDouyinDraft(page);
+    const privateVisibility = await selectDouyinPrivateVisibility(page);
+    const published = privateVisibility && (await publishDouyinPost(page));
 
-    if (!uploaded || !uploadReady || !metadata.filledTitle || !metadata.filledContent || !savedDraft) {
+    if (!uploaded || !uploadReady || !metadata.filledTitle || !metadata.filledContent || !privateVisibility || !published) {
       return {
         platform: "douyin",
         status: "failed",
-        message: `Douyin image draft was not completed. uploaded=${uploaded}, uploadReady=${uploadReady}, title=${metadata.filledTitle}, content=${metadata.filledContent}, savedDraft=${savedDraft}.`
+        message: `Douyin image post was not published. uploaded=${uploaded}, uploadReady=${uploadReady}, title=${metadata.filledTitle}, content=${metadata.filledContent}, privateVisibility=${privateVisibility}, published=${published}.`
       };
     }
 
     return {
       platform: "douyin",
-      status: "draft_created",
-      message: "Douyin image post draft was created."
+      status: "published",
+      message: "Douyin image post was published with private visibility."
     };
   },
   async createVideoPostDraft(input: CreateVideoPostDraftInput): Promise<CreateVideoPostDraftResult> {
@@ -228,7 +222,7 @@ export const douyinAdapter: PlatformAdapter = {
     await waitForAnyVisible(page, metadataReadySelectors, 15_000);
     const metadata = await fillDouyinMetadata(page, input.title, input.content, input.tags);
     const privateVisibility = await selectDouyinPrivateVisibility(page);
-    const published = privateVisibility && (await publishDouyinVideo(page));
+    const published = privateVisibility && (await publishDouyinPost(page));
 
     if (!metadata.filledTitle || !metadata.filledContent || !privateVisibility || !published) {
       return {
@@ -385,13 +379,6 @@ async function fillDouyinTags(page: Page, tags: string[]): Promise<boolean> {
   return true;
 }
 
-async function saveDouyinDraft(page: Page): Promise<boolean> {
-  await page.keyboard.press("Escape").catch(() => undefined);
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)).catch(() => undefined);
-  await page.waitForTimeout(1_000);
-  return clickFirstUsable(page, draftSelectors);
-}
-
 async function selectDouyinPrivateVisibility(page: Page): Promise<boolean> {
   await page.keyboard.press("Escape").catch(() => undefined);
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)).catch(() => undefined);
@@ -416,7 +403,7 @@ async function selectDouyinPrivateVisibility(page: Page): Promise<boolean> {
   }).catch(() => false);
 }
 
-async function publishDouyinVideo(page: Page): Promise<boolean> {
+async function publishDouyinPost(page: Page): Promise<boolean> {
   await page.keyboard.press("Escape").catch(() => undefined);
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)).catch(() => undefined);
   await page.waitForTimeout(1_000);

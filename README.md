@@ -5,7 +5,7 @@
 当前能力重点：
 
 - 小红书图文：创建草稿，不点击最终发布。
-- 抖音图文：创建草稿，不点击最终发布。
+- 抖音图文：上传完成后选择“仅自己可见”，再点击发布。
 - 抖音视频：上传完成后选择“仅自己可见”，再点击发布。
 
 项目只使用正常浏览器自动化，不生成内容，不绕过验证码，不逆向私有接口。账号登录、扫码、验证码等都需要按平台正常流程人工完成。
@@ -15,7 +15,7 @@
 | 平台 | 图文草稿 | 视频流程 | 文章草稿 |
 | --- | --- | --- | --- |
 | 小红书 | 支持 | 不支持 | 不支持 |
-| 抖音 | 支持 | 支持，仅自己可见后发布 | 不支持 |
+| 抖音 | 支持，仅自己可见后发布 | 支持，仅自己可见后发布 | 不支持 |
 | 知乎 | 预留 | 不支持 | 计划中 |
 | B站 | 计划中 | 计划中 | 不支持 |
 | CSDN | 预留 | 不支持 | 计划中 |
@@ -97,7 +97,7 @@ $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
 
 ### `create_image_post_draft`
 
-创建图文草稿。小红书和抖音均支持。
+创建图文内容。小红书是草稿，抖音会在上传完成后选择“仅自己可见”并发布。
 
 小红书示例：
 
@@ -130,6 +130,16 @@ $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
 - `images` 至少包含一个存在的本地图片路径。
 - 支持图片格式：`.jpg`、`.jpeg`、`.png`、`.webp`。
 - `tags` 可选，会转换为话题格式并填入内容。
+
+抖音成功结果示例：
+
+```json
+{
+  "platform": "douyin",
+  "status": "published",
+  "message": "Douyin image post was published with private visibility."
+}
+```
 
 ### `create_video_post_draft`
 
@@ -169,8 +179,9 @@ $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
 1. 调用 `open_login_page` 打开对应平台页面。
 2. 在可见浏览器窗口中手动登录。
 3. 调用 `check_login_status` 检查登录状态。
-4. 图文内容调用 `create_image_post_draft`。
-5. 抖音视频调用 `create_video_post_draft`，工具会上传视频、等待上传完成、选择“仅自己可见”并发布。
+4. 小红书图文调用 `create_image_post_draft` 创建草稿。
+5. 抖音图文调用 `create_image_post_draft`，工具会上传图片、等待上传完成、选择“仅自己可见”并发布。
+6. 抖音视频调用 `create_video_post_draft`，工具会上传视频、等待上传完成、选择“仅自己可见”并发布。
 
 不要在同一个 profile 上同时启动多个浏览器自动化进程，否则可能出现 profile 锁定或登录态异常。
 
@@ -183,27 +194,52 @@ $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='smoketest'
 npm.cmd run smoke:xiaohongshu
 ```
 
-### 抖音图文草稿
+### 抖音图文仅自己可见发布
+
+推荐把中文标题、正文、标签写进 UTF-8 JSON 文件，再通过 `DOUYIN_SMOKE_INPUT_FILE` 传入，避免 `cmd` 批处理或错误编码把中文变成 `????`。
+
+示例文件 `D:/work/2026/code/social_media_skill/.social-media-mcp/douyin-image-smoke.json`：
+
+```json
+{
+  "title": "抖音图文自动化测试",
+  "content": "这是一条用于验证抖音图文自动上传和发布流程的测试内容。",
+  "tags": ["自动化测试", "抖音图文", "playwright"]
+}
+```
 
 ```powershell
 $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
+$env:DOUYIN_LOGIN_POLL_INTERVAL_MS='30000'
 $env:DOUYIN_SMOKE_MODE='image'
 $env:DOUYIN_IMAGE_PATH='D:/absolute/path/cover.png'
+$env:DOUYIN_SMOKE_INPUT_FILE='D:/work/2026/code/social_media_skill/.social-media-mcp/douyin-image-smoke.json'
 npm.cmd run smoke:douyin
 ```
 
 ### 抖音视频仅自己可见发布
 
+中文标题、正文、标签同样推荐走 UTF-8 JSON 文件：
+
+示例文件 `D:/work/2026/code/social_media_skill/.social-media-mcp/douyin-video-smoke.json`：
+
+```json
+{
+  "title": "抖音视频自动化测试",
+  "content": "这是一条用于验证抖音视频上传完成识别和最终发布流程的测试内容。",
+  "tags": ["自动化测试", "抖音视频", "playwright"]
+}
+```
+
 ```powershell
 $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
 $env:SOCIAL_MEDIA_MCP_CLOSE_BROWSER_ON_EXIT='0'
+$env:DOUYIN_LOGIN_POLL_INTERVAL_MS='30000'
 $env:DOUYIN_VIDEO_UPLOAD_COMPLETE_TIMEOUT_MS='240000'
 $env:DOUYIN_VIDEO_UPLOAD_SETTLE_MS='3000'
 $env:DOUYIN_SMOKE_MODE='video'
 $env:DOUYIN_VIDEO_PATH='D:/absolute/path/video.mp4'
-$env:DOUYIN_TITLE='douyin private publish smoke'
-$env:DOUYIN_CONTENT='Douyin private publish smoke body. Testing upload completion, private visibility, publish, and topic tags.'
-$env:DOUYIN_TAGS='mcp,douyin,private-publish'
+$env:DOUYIN_SMOKE_INPUT_FILE='D:/work/2026/code/social_media_skill/.social-media-mcp/douyin-video-smoke.json'
 npm.cmd run smoke:douyin
 ```
 
@@ -212,6 +248,8 @@ npm.cmd run smoke:douyin
 可选环境变量：
 
 - `DOUYIN_AUTO_OPEN_LOGIN=0`：不自动打开抖音登录页。
+- `DOUYIN_LOGIN_POLL_INTERVAL_MS=30000`：抖音登录页默认等待 30 秒后再检查一次登录状态。
+- `DOUYIN_SMOKE_INPUT_FILE`：从 UTF-8 JSON 文件读取 `title`、`content`、`tags`，推荐用于中文内容。
 - `XHS_AUTO_OPEN_LOGIN=0`：不自动打开小红书登录页。
 - `SOCIAL_MEDIA_MCP_CLOSE_BROWSER_ON_EXIT=0`：脚本结束后保留浏览器窗口，方便观察页面。
 
@@ -238,7 +276,10 @@ npm.cmd run smoke:douyin
 
 只有满足完成条件后，才会继续填写内容、选择“仅自己可见”并点击最终发布按钮。
 
-更详细的真实测试流程见 [skills/douyin-private-video-publish/SKILL.md](skills/douyin-private-video-publish/SKILL.md)。
+更详细的真实测试流程见：
+
+- [skills/douyin-private-image-publish/SKILL.md](D:/work/2026/code/social_media_skill/skills/douyin-private-image-publish/SKILL.md:1)
+- [skills/douyin-private-video-publish/SKILL.md](D:/work/2026/code/social_media_skill/skills/douyin-private-video-publish/SKILL.md:1)
 
 ## 开发验证
 
@@ -257,8 +298,8 @@ npm.cmd test
 - 不保存用户名或密码。
 - 不绕过验证码或平台验证。
 - 不使用逆向得到的私有接口。
-- 图文流程默认只创建草稿。
-- 抖音视频流程会发布，但会先选择“仅自己可见”。
+- 小红书图文默认只创建草稿。
+- 抖音图文和抖音视频会发布，但都会先选择“仅自己可见”。
 
 ## 参考
 

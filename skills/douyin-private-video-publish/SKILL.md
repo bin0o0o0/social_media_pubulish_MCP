@@ -23,6 +23,8 @@ description: Use when an AI coding agent needs to validate or repair the Douyin 
 ## 核心约束
 
 - 不要用 Docker。本仓库此流程按用户要求使用 npm。
+- 中文标题、正文、标签不要通过 ASCII `cmd` 批处理文件注入环境变量。
+- 优先使用 `DOUYIN_SMOKE_INPUT_FILE` 指向 UTF-8 JSON 文件。
 - 不要把“发布设置”“重新上传”“添加音乐”单独当成上传完成。
 - 不要用固定等待 10 分钟代替页面状态判断。
 - 不要在视频还显示“上传过程中请不要删除/移动文件”时点击发布。
@@ -109,18 +111,27 @@ while not timeout:
 
 ## npm 真实测试命令
 
+先准备一个 UTF-8 JSON 文件，例如 `D:/work/2026/code/social_media_skill/.social-media-mcp/douyin-video-smoke.json`：
+
+```json
+{
+  "title": "抖音视频自动化测试",
+  "content": "这是一条用于验证抖音视频上传完成识别和最终发布流程的测试内容。",
+  "tags": ["自动化测试", "抖音视频", "playwright"]
+}
+```
+
 PowerShell 示例：
 
 ```powershell
 $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
 $env:SOCIAL_MEDIA_MCP_CLOSE_BROWSER_ON_EXIT='0'
+$env:DOUYIN_LOGIN_POLL_INTERVAL_MS='30000'
 $env:DOUYIN_VIDEO_UPLOAD_COMPLETE_TIMEOUT_MS='240000'
 $env:DOUYIN_VIDEO_UPLOAD_SETTLE_MS='3000'
 $env:DOUYIN_SMOKE_MODE='video'
 $env:DOUYIN_VIDEO_PATH='C:\Users\Administrator\Videos\NVIDIA\League of Legends\League of Legends 2025.11.10 - 20.27.22.01.mp4'
-$env:DOUYIN_TITLE='douyin private publish smoke'
-$env:DOUYIN_CONTENT='Douyin private publish smoke body. Testing upload completion, private visibility, publish, and topic tags.'
-$env:DOUYIN_TAGS='mcp,douyin,private-publish'
+$env:DOUYIN_SMOKE_INPUT_FILE='D:/work/2026/code/social_media_skill/.social-media-mcp/douyin-video-smoke.json'
 npm.cmd run smoke:douyin
 ```
 
