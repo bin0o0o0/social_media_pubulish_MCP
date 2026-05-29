@@ -25,7 +25,7 @@ type SmokeInputFile = {
 async function main(): Promise<void> {
   const profileSuffix = process.env.SOCIAL_MEDIA_MCP_PROFILE_SUFFIX?.trim();
   const mode = parseMode(process.env.DOUYIN_SMOKE_MODE);
-  const imagePath = process.env.DOUYIN_IMAGE_PATH?.trim() || DEFAULT_IMAGE_PATH;
+  const imagePaths = parseImagePaths(process.env.DOUYIN_IMAGE_PATH) || [DEFAULT_IMAGE_PATH];
   const videoPath = process.env.DOUYIN_VIDEO_PATH?.trim() || DEFAULT_VIDEO_PATH;
   const inputFile = readSmokeInputFile(process.env.DOUYIN_SMOKE_INPUT_FILE);
   const title = resolveSmokeText(process.env.DOUYIN_TITLE, inputFile?.title) || DEFAULT_TITLE;
@@ -42,7 +42,7 @@ async function main(): Promise<void> {
         platform: "douyin",
         mode,
         profileSuffix: profileSuffix || null,
-        imagePath: mode === "image" ? imagePath : null,
+        imagePaths: mode === "image" ? imagePaths : null,
         videoPath: mode === "video" ? videoPath : null,
         inputFile: process.env.DOUYIN_SMOKE_INPUT_FILE?.trim() || null,
         autoOpenLogin,
@@ -82,7 +82,7 @@ async function main(): Promise<void> {
   const draftResult =
     mode === "video"
       ? await createVideoDraft({ title, content, videoPath, tags })
-      : await createImageDraft({ title, content, imagePath, tags });
+      : await createImageDraft({ title, content, images: imagePaths, tags });
   console.log(JSON.stringify(draftResult, null, 2));
 
   process.exitCode = draftResult.status === "draft_created" || draftResult.status === "published" ? 0 : 1;
@@ -99,7 +99,7 @@ async function openLoginPage() {
 async function createImageDraft(input: {
   title: string;
   content: string;
-  imagePath: string;
+  images: string[];
   tags: string[];
 }) {
   return parseToolResult(
@@ -107,7 +107,7 @@ async function createImageDraft(input: {
       platform: "douyin",
       title: input.title,
       content: input.content,
-      images: [input.imagePath],
+      images: input.images,
       tags: input.tags
     })
   );
@@ -204,6 +204,17 @@ function parseMode(value: string | undefined): "image" | "video" {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseImagePaths(value: string | undefined): string[] | null {
+  if (!value?.trim()) {
+    return null;
+  }
+  const paths = value
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return paths.length > 0 ? paths : null;
 }
 
 function isProfileLocked(status: { message?: string }) {
