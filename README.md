@@ -103,7 +103,21 @@ npm run install-browsers
 
 ## 配置 MCP Server
 
-### 方式一：项目级配置（推荐，团队共享）
+MCP Server 是通用的 stdio 工具暴露协议，任何支持 MCP 的 Agent 都可以连接。
+
+### 通用的 MCP Server 启动命令
+
+```bash
+npm run dev
+```
+
+启动后通过 stdio 暴露工具能力。
+
+### 各 Agent 的配置方式
+
+不同 Agent 的 MCP 配置位置和格式略有差异，但本质都是告诉 Agent "如何启动这个 MCP Server"。
+
+#### Claude Code（项目级，推荐）
 
 在项目根目录创建 `.claude/settings.json`：
 
@@ -119,19 +133,15 @@ npm run install-browsers
 }
 ```
 
-把 `cwd` 改成你自己的项目绝对路径。
-
-### 方式二：全局配置
-
-在 Claude Code 全局设置中添加：
+#### Claude Code（全局）
 
 ```bash
 claude mcp add social-media-pubulish-mcp npm run dev --cwd D:/work/2026/code/life/自动化图文发布测试
 ```
 
-### 方式三：其他 MCP Client
+#### Cursor
 
-通用的 MCP Client 配置：
+在 Cursor Settings → MCP 中添加：
 
 ```json
 {
@@ -145,6 +155,24 @@ claude mcp add social-media-pubulish-mcp npm run dev --cwd D:/work/2026/code/lif
 }
 ```
 
+#### Codex / 其他支持 MCP 的 Agent
+
+在对应的 MCP 配置文件中添加：
+
+```json
+{
+  "mcpServers": {
+    "social-media-pubulish-mcp": {
+      "command": "npm",
+      "args": ["run", "dev"],
+      "cwd": "D:/work/2026/code/life/自动化图文发布测试"
+    }
+  }
+}
+```
+
+> 💡 **把 `cwd` 改成你自己的项目绝对路径。**
+>
 > 💡 **验证 MCP 是否配置成功**：启动后 Agent 应该能看到 `check_login_status`、`open_login_page`、`create_image_post_draft`、`create_video_post_draft` 等工具。
 
 ---
@@ -153,9 +181,13 @@ claude mcp add social-media-pubulish-mcp npm run dev --cwd D:/work/2026/code/lif
 
 **这是最容易遗漏但最关键的步骤。**
 
-项目自带的 Skill 文件位于 `skills/` 目录，记录了各平台已验证的操作流程和约束。AI Agent 只有在 `.claude/skills/` 目录下才能自动识别和加载它们。
+项目自带的 Skill 文件位于 `skills/` 目录，记录了各平台已验证的操作流程和约束。每个 Skill 是标准的 Markdown 文件（带 YAML frontmatter），格式通用，可被任何支持 Skill 机制的 Agent 读取。
 
-### 安装步骤
+不同 Agent 加载 Skill 的路径不同，但内容格式一致。
+
+### 各 Agent 的 Skill 安装方式
+
+#### Claude Code
 
 ```powershell
 # 在项目根目录执行
@@ -163,12 +195,7 @@ mkdir -p .claude/skills
 cp -r skills/* .claude/skills/
 ```
 
-或手动复制：
-- `skills/douyin-private-image-publish/` → `.claude/skills/douyin-private-image-publish/`
-- `skills/douyin-private-video-publish/` → `.claude/skills/douyin-private-video-publish/`
-- `skills/xiaohongshu-draft-smoketest/` → `.claude/skills/xiaohongshu-draft-smoketest/`
-
-### 安装后验证
+验证：
 
 ```powershell
 ls .claude/skills/
@@ -177,6 +204,21 @@ ls .claude/skills/
 # douyin-private-video-publish
 # xiaohongshu-draft-smoketest
 ```
+
+#### Cursor
+
+将 `skills/` 下的每个 `SKILL.md` 内容复制到 Cursor 的 Rules / Project Rules 中，或放入 `.cursor/rules/` 目录（如 Cursor 支持）。
+
+#### Codex / Kimi / DeepSeek / 其他 Agent
+
+将这些 Skill 文件的内容以系统提示（system prompt）或项目上下文的方式提供给 Agent。具体方式取决于各 Agent 的上下文注入机制：
+
+- **Codex**：可通过 `--instructions` 或项目级配置注入
+- **Kimi**：可通过"常用语"或项目上下文功能添加
+- **DeepSeek**：可通过对话前置提示或 API 系统消息注入
+- **通用方式**：在启动对话前，将 `skills/<name>/SKILL.md` 的内容粘贴给 Agent 作为上下文
+
+> 💡 **核心原则**：Skill 的内容（Markdown + YAML frontmatter）是通用的，不同 Agent 只是"在哪里读取"有差异。只要 Agent 能读到 Skill 里的操作流程和约束，就能正确执行。
 
 ### Skill 内容说明
 
@@ -192,7 +234,7 @@ ls .claude/skills/
 - **常见错误**：容易踩的坑和如何避免
 - **回归验证**：代码修改后如何验证
 
-> 💡 **验证 Skill 是否生效**：向 Agent 提出"帮我发布抖音图文"时，Agent 应该能准确说出需要上传图片、填写标题、选择"仅自己可见"、点击发布，而不是摸索着乱点。
+> 💡 **验证 Skill 是否生效**：向 Agent 提出"帮我发布抖音图文"时，Agent 应该能准确说出需要上传图片、填写标题、选择"仅自己可见"、点击发布，而不是摸索着乱点。如果 Agent 表现得很茫然，大概率是 Skill 没有被正确加载。
 
 ---
 
