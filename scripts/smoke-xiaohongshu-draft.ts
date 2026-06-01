@@ -14,12 +14,13 @@ const DEFAULT_TAGS = ["mcp", "xiaohongshu", "draft-test"];
 
 async function main(): Promise<void> {
   const profileSuffix = process.env.SOCIAL_MEDIA_MCP_PROFILE_SUFFIX?.trim();
-  const imagePath = process.env.XHS_IMAGE_PATH?.trim() || DEFAULT_IMAGE_PATH;
+  const imagePaths = parseImagePaths(process.env.XHS_IMAGE_PATH) || [DEFAULT_IMAGE_PATH];
   const title = process.env.XHS_TITLE?.trim() || DEFAULT_TITLE;
   const content = process.env.XHS_CONTENT?.trim() || DEFAULT_CONTENT;
   const tags = parseTags(process.env.XHS_TAGS);
   const autoOpenLogin = process.env.XHS_AUTO_OPEN_LOGIN !== "0";
   const pollAttempts = Number.parseInt(process.env.XHS_LOGIN_POLL_ATTEMPTS ?? "60", 10);
+  const pollIntervalMs = Number.parseInt(process.env.XHS_LOGIN_POLL_INTERVAL_MS ?? "30000", 10);
 
   console.log(
     JSON.stringify(
@@ -27,9 +28,10 @@ async function main(): Promise<void> {
         step: "start",
         platform: "xiaohongshu",
         profileSuffix: profileSuffix || null,
-        imagePath,
+        imagePaths,
         autoOpenLogin,
-        pollAttempts
+        pollAttempts,
+        pollIntervalMs
       },
       null,
       2
@@ -40,7 +42,7 @@ async function main(): Promise<void> {
 
   if (!loginStatus.loggedIn && autoOpenLogin) {
     console.log(JSON.stringify(await openLoginPage(), null, 2));
-    loginStatus = await pollLoginStatus(pollAttempts);
+    loginStatus = await pollLoginStatus(pollAttempts, pollIntervalMs);
   }
 
   console.log(JSON.stringify(loginStatus, null, 2));
@@ -61,7 +63,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const draftResult = await createDraft({ title, content, imagePath, tags });
+  const draftResult = await createDraft({ title, content, images: imagePaths, tags });
   console.log(JSON.stringify(draftResult, null, 2));
 
   process.exitCode = draftResult.status === "draft_created" ? 0 : 1;
@@ -78,7 +80,7 @@ async function openLoginPage() {
 async function createDraft(input: {
   title: string;
   content: string;
-  imagePath: string;
+  images: string[];
   tags: string[];
 }) {
   return parseToolResult(
@@ -86,17 +88,17 @@ async function createDraft(input: {
       platform: "xiaohongshu",
       title: input.title,
       content: input.content,
-      images: [input.imagePath],
+      images: input.images,
       tags: input.tags
     })
   );
 }
 
-async function pollLoginStatus(attempts: number) {
+async function pollLoginStatus(attempts: number, intervalMs: number) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    await sleep(5_000);
+    await sleep(intervalMs);
     const status = await checkLoginStatus();
-    console.log(JSON.stringify({ step: "poll-login", attempt, status }, null, 2));
+    console.log(JSON.stringify({ step: "poll-login", attempt, intervalMs, status }, null, 2));
 
     if (status.loggedIn) {
       return status;
@@ -129,6 +131,17 @@ function parseTags(value: string | undefined): string[] {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseImagePaths(value: string | undefined): string[] | null {
+  if (!value?.trim()) {
+    return null;
+  }
+  const paths = value
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return paths.length > 0 ? paths : null;
 }
 
 function isProfileLocked(status: { message?: string }) {
