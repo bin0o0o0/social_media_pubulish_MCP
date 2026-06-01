@@ -21,9 +21,7 @@ describe("douyin selector diagnostics", () => {
   });
 
   test("formats douyin caption tags inline instead of line-by-line bullets", () => {
-    expect(formatDouyinCaption("正文", ["mcp", "#douyin", "smoke-test"])).toBe(
-      "正文\n\n#mcp #douyin #smoke-test"
-    );
+    expect(formatDouyinCaption("正文", ["mcp", "#douyin", "smoke-test"])).toBe("正文\n\n#mcp #douyin #smoke-test");
   });
 
   test("formats expected uploaded image count text", () => {

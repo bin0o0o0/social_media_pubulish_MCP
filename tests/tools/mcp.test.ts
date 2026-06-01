@@ -57,6 +57,41 @@ describe("handleCreateImagePostDraft", () => {
     });
     rmSync(dir, { recursive: true, force: true });
   });
+
+  test("returns published when the Douyin adapter publishes an image post", async () => {
+    const dir = join(tmpdir(), `social-media-mcp-${crypto.randomUUID()}`);
+    mkdirSync(dir, { recursive: true });
+    const imagePath = join(dir, "cover.webp");
+    writeFileSync(imagePath, "fake webp bytes");
+
+    const result = await handleCreateImagePostDraft(
+      {
+        platform: "douyin",
+        title: "Title",
+        content: "Body",
+        images: [imagePath]
+      },
+      {
+        platform: "douyin",
+        capabilities: { imagePostDraft: true, videoPostDraft: true },
+        async checkLoginStatus() {
+          return { platform: "douyin", loggedIn: true, message: "logged in" };
+        },
+        async openLoginPage() {
+          return { platform: "douyin", opened: true, message: "opened" };
+        },
+        async createImagePostDraft() {
+          return { platform: "douyin", status: "published", message: "published" };
+        }
+      }
+    );
+
+    expect(JSON.parse(firstText(result))).toMatchObject({
+      platform: "douyin",
+      status: "published"
+    });
+    rmSync(dir, { recursive: true, force: true });
+  });
 });
 
 describe("handleCreateVideoPostDraft", () => {
@@ -141,6 +176,41 @@ describe("handleCreateVideoPostDraft", () => {
       video: videoPath,
       coverImage: coverImagePath,
       coverOrientation: "vertical"
+    });
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("returns published when the Douyin adapter publishes a video post", async () => {
+    const dir = join(tmpdir(), `social-media-mcp-${crypto.randomUUID()}`);
+    mkdirSync(dir, { recursive: true });
+    const videoPath = join(dir, "clip.mov");
+    writeFileSync(videoPath, "fake mov bytes");
+
+    const result = await handleCreateVideoPostDraft(
+      {
+        platform: "douyin",
+        title: "Title",
+        content: "Body",
+        video: videoPath
+      },
+      {
+        platform: "douyin",
+        capabilities: { imagePostDraft: true, videoPostDraft: true },
+        async checkLoginStatus() {
+          return { platform: "douyin", loggedIn: true, message: "logged in" };
+        },
+        async openLoginPage() {
+          return { platform: "douyin", opened: true, message: "opened" };
+        },
+        async createVideoPostDraft() {
+          return { platform: "douyin", status: "published", message: "published" };
+        }
+      }
+    );
+
+    expect(JSON.parse(firstText(result))).toMatchObject({
+      platform: "douyin",
+      status: "published"
     });
     rmSync(dir, { recursive: true, force: true });
   });

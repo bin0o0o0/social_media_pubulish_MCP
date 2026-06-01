@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import process from "node:process";
 import {
   getDouyinSmokeSessionStatus,
@@ -15,6 +16,12 @@ const DEFAULT_TITLE = "douyin smoke draft";
 const DEFAULT_CONTENT = "Smoke-test draft body for Douyin automation.";
 const DEFAULT_TAGS = ["mcp", "douyin", "draft-test"];
 
+type SmokeInputFile = {
+  title?: string;
+  content?: string;
+  tags?: string[] | string;
+};
+
 async function main(): Promise<void> {
   const command = process.argv[2] ?? "start";
   const workspaceRoot = process.cwd();
@@ -22,18 +29,19 @@ async function main(): Promise<void> {
   switch (command) {
     case "start": {
       const mode = parseMode(process.env.DOUYIN_SMOKE_MODE);
+      const inputFile = readSmokeInputFile(process.env.DOUYIN_SMOKE_INPUT_FILE);
       const record = startDouyinSmokeSession({
         workspaceRoot,
         profileSuffix: process.env.SOCIAL_MEDIA_MCP_PROFILE_SUFFIX?.trim() || null,
         mode,
         draftInput: {
-          title: process.env.DOUYIN_TITLE?.trim() || DEFAULT_TITLE,
-          content: process.env.DOUYIN_CONTENT?.trim() || DEFAULT_CONTENT,
+          title: resolveSmokeText(process.env.DOUYIN_TITLE, inputFile?.title) || DEFAULT_TITLE,
+          content: resolveSmokeText(process.env.DOUYIN_CONTENT, inputFile?.content) || DEFAULT_CONTENT,
           imagePaths: parseImagePaths(process.env.DOUYIN_IMAGE_PATHS, process.env.DOUYIN_IMAGE_PATH),
           videoPath: mode === "video" ? process.env.DOUYIN_VIDEO_PATH?.trim() || DEFAULT_VIDEO_PATH : null,
           coverImagePath: mode === "video" ? process.env.DOUYIN_VIDEO_COVER_PATH?.trim() || null : null,
           coverOrientation: parseCoverOrientation(process.env.DOUYIN_VIDEO_COVER_ORIENTATION),
-          tags: parseTags(process.env.DOUYIN_TAGS)
+          tags: resolveSmokeTags(process.env.DOUYIN_TAGS, inputFile?.tags)
         },
         settings: {
           autoOpenLogin: process.env.DOUYIN_AUTO_OPEN_LOGIN !== "0",
@@ -116,9 +124,10 @@ function requireCode(value: string | undefined): string {
 }
 
 function parseImagePaths(pathsValue: string | undefined, singleValue: string | undefined): string[] {
-  if (pathsValue) {
-    const parsed = pathsValue
-      .split("|")
+  const raw = pathsValue?.trim() || singleValue?.trim();
+  if (raw) {
+    const parsed = raw
+      .split(/[|,]/)
       .map((value) => value.trim())
       .filter(Boolean);
 
@@ -139,6 +148,38 @@ function parseTags(value: string | undefined): string[] {
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
+}
+
+function resolveSmokeText(envValue: string | undefined, fileValue: string | undefined): string | undefined {
+  return envValue?.trim() || fileValue?.trim() || undefined;
+}
+
+function resolveSmokeTags(envValue: string | undefined, fileValue: SmokeInputFile["tags"]): string[] {
+  if (envValue?.trim()) {
+    return parseTags(envValue);
+  }
+
+  if (Array.isArray(fileValue)) {
+    const normalized = fileValue.map((tag) => tag.trim()).filter(Boolean);
+    return normalized.length > 0 ? normalized : DEFAULT_TAGS;
+  }
+
+  if (typeof fileValue === "string") {
+    const normalized = parseTags(fileValue);
+    return normalized.length > 0 ? normalized : DEFAULT_TAGS;
+  }
+
+  return DEFAULT_TAGS;
+}
+
+function readSmokeInputFile(filePath: string | undefined): SmokeInputFile | null {
+  const trimmedPath = filePath?.trim();
+  if (!trimmedPath) {
+    return null;
+  }
+
+  const raw = readFileSync(trimmedPath, "utf8");
+  return JSON.parse(raw) as SmokeInputFile;
 }
 
 function parseMode(value: string | undefined): "image" | "video" {

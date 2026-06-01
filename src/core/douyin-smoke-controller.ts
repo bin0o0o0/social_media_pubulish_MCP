@@ -29,7 +29,7 @@ type LoginStatusResult = {
 
 type PostDraftResult = {
   platform: "douyin";
-  status: "draft_created" | "login_required" | "verification_required" | "failed";
+  status: "draft_created" | "published" | "login_required" | "verification_required" | "failed";
   message: string;
 };
 
@@ -172,7 +172,7 @@ export async function runDouyinSmokeWorker(workspaceRoot: string, sessionId: str
       status:
         draftResult.status === "verification_required"
           ? "awaiting_verification"
-          : draftResult.status === "draft_created"
+          : draftResult.status === "draft_created" || draftResult.status === "published"
             ? "completed"
             : "failed"
     });
