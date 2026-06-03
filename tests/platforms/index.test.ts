@@ -16,7 +16,8 @@ describe("getPlatformAdapter", () => {
     });
     expect(getPlatformAdapter("douyin").capabilities).toEqual({
       imagePostDraft: true,
-      videoPostDraft: true
+      videoPostDraft: true,
+      verificationCodeSubmission: true
     });
   });
 

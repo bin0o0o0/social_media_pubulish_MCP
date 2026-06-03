@@ -6,13 +6,15 @@ import {
   checkLoginStatusInputSchema,
   createImagePostDraftInputSchema,
   createVideoPostDraftInputSchema,
-  openLoginPageInputSchema
+  openLoginPageInputSchema,
+  submitVerificationCodeInputSchema
 } from "./core/schemas.js";
 import {
   handleCheckLoginStatus,
   handleCreateImagePostDraft,
   handleCreateVideoPostDraft,
-  handleOpenLoginPage
+  handleOpenLoginPage,
+  handleSubmitVerificationCode
 } from "./tools/mcp.js";
 
 export function createServer(): McpServer {
@@ -59,6 +61,16 @@ export function createServer(): McpServer {
       inputSchema: createVideoPostDraftInputSchema
     },
     async (args) => handleCreateVideoPostDraft(args)
+  );
+
+  server.registerTool(
+    "submit_verification_code",
+    {
+      title: "Submit Verification Code",
+      description: "Submit a Douyin SMS verification code in the currently open verification dialog.",
+      inputSchema: submitVerificationCodeInputSchema
+    },
+    async (args) => handleSubmitVerificationCode(args)
   );
 
   return server;

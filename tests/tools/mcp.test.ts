@@ -5,7 +5,8 @@ import { describe, expect, test } from "vitest";
 import {
   createTextJsonResult,
   handleCreateImagePostDraft,
-  handleCreateVideoPostDraft
+  handleCreateVideoPostDraft,
+  handleSubmitVerificationCode
 } from "../../src/tools/mcp.js";
 
 describe("createTextJsonResult", () => {
@@ -98,14 +99,18 @@ describe("handleCreateVideoPostDraft", () => {
     const dir = join(tmpdir(), `social-media-mcp-${crypto.randomUUID()}`);
     mkdirSync(dir, { recursive: true });
     const videoPath = join(dir, "clip.mp4");
+    const coverImagePath = join(dir, "cover.png");
     writeFileSync(videoPath, "fake mp4 bytes");
+    writeFileSync(coverImagePath, "fake png bytes");
 
     const result = await handleCreateVideoPostDraft(
       {
         platform: "douyin",
         title: "Title",
         content: "Body",
-        video: videoPath
+        video: videoPath,
+        coverImage: coverImagePath,
+        coverOrientation: "vertical"
       },
       {
         platform: "douyin",
@@ -125,6 +130,52 @@ describe("handleCreateVideoPostDraft", () => {
     expect(JSON.parse(firstText(result))).toMatchObject({
       platform: "douyin",
       status: "login_required"
+    });
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("returns draft_created when the Douyin adapter creates a video draft", async () => {
+    const dir = join(tmpdir(), `social-media-mcp-${crypto.randomUUID()}`);
+    mkdirSync(dir, { recursive: true });
+    const videoPath = join(dir, "clip.mov");
+    const coverImagePath = join(dir, "cover.png");
+    writeFileSync(videoPath, "fake mov bytes");
+    writeFileSync(coverImagePath, "fake png bytes");
+    let receivedInput: Record<string, unknown> | null = null;
+
+    const result = await handleCreateVideoPostDraft(
+      {
+        platform: "douyin",
+        title: "Title",
+        content: "Body",
+        video: videoPath,
+        coverImage: coverImagePath,
+        coverOrientation: "vertical"
+      },
+      {
+        platform: "douyin",
+        capabilities: { imagePostDraft: true, videoPostDraft: true },
+        async checkLoginStatus() {
+          return { platform: "douyin", loggedIn: true, message: "logged in" };
+        },
+        async openLoginPage() {
+          return { platform: "douyin", opened: true, message: "opened" };
+        },
+        async createVideoPostDraft(input) {
+          receivedInput = input;
+          return { platform: "douyin", status: "draft_created", message: "created" };
+        }
+      }
+    );
+
+    expect(JSON.parse(firstText(result))).toMatchObject({
+      platform: "douyin",
+      status: "draft_created"
+    });
+    expect(receivedInput).toMatchObject({
+      video: videoPath,
+      coverImage: coverImagePath,
+      coverOrientation: "vertical"
     });
     rmSync(dir, { recursive: true, force: true });
   });
@@ -168,14 +219,18 @@ describe("handleCreateVideoPostDraft", () => {
     const dir = join(tmpdir(), `social-media-mcp-${crypto.randomUUID()}`);
     mkdirSync(dir, { recursive: true });
     const videoPath = join(dir, "clip.mp4");
+    const coverImagePath = join(dir, "cover.png");
     writeFileSync(videoPath, "fake mp4 bytes");
+    writeFileSync(coverImagePath, "fake png bytes");
 
     const result = await handleCreateVideoPostDraft(
       {
         platform: "douyin",
         title: "Title",
         content: "Body",
-        video: videoPath
+        video: videoPath,
+        coverImage: coverImagePath,
+        coverOrientation: "vertical"
       },
       {
         platform: "douyin",
@@ -195,6 +250,35 @@ describe("handleCreateVideoPostDraft", () => {
       message: "Platform douyin does not support video post drafts."
     });
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe("handleSubmitVerificationCode", () => {
+  test("returns verified when the Douyin adapter submits a verification code", async () => {
+    const result = await handleSubmitVerificationCode(
+      {
+        platform: "douyin",
+        code: "123456"
+      },
+      {
+        platform: "douyin",
+        capabilities: { imagePostDraft: true, videoPostDraft: true, verificationCodeSubmission: true },
+        async checkLoginStatus() {
+          return { platform: "douyin", loggedIn: true, message: "logged in" };
+        },
+        async openLoginPage() {
+          return { platform: "douyin", opened: true, message: "opened" };
+        },
+        async submitVerificationCode() {
+          return { platform: "douyin", status: "verified", message: "verified" };
+        }
+      }
+    );
+
+    expect(JSON.parse(firstText(result))).toMatchObject({
+      platform: "douyin",
+      status: "verified"
+    });
   });
 });
 

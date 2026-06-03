@@ -9,8 +9,14 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "install-browsers": "playwright install chromium",
+    "smoke:mcp": "tsx scripts/mcp-smoke-client.ts",
     "smoke:xiaohongshu": "tsx scripts/smoke-xiaohongshu-draft.ts",
-    "smoke:douyin": "tsx scripts/smoke-douyin-draft.ts"
+    "smoke:douyin": "tsx scripts/smoke-douyin-draft.ts start",
+    "smoke:douyin:start": "tsx scripts/smoke-douyin-draft.ts start",
+    "smoke:douyin:status": "tsx scripts/smoke-douyin-draft.ts status",
+    "smoke:douyin:watch": "tsx scripts/smoke-douyin-draft.ts watch",
+    "smoke:douyin:submit": "tsx scripts/smoke-douyin-draft.ts submit",
+    "smoke:douyin:stop": "tsx scripts/smoke-douyin-draft.ts stop"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

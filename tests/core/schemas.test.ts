@@ -107,13 +107,17 @@ describe("createVideoPostDraftInputSchema", () => {
   test("accepts valid Douyin video post draft input", () => {
     const dir = mkdirTestDir();
     const videoPath = join(dir, "clip.mp4");
+    const coverImagePath = join(dir, "cover.png");
     writeFileSync(videoPath, "fake mp4 bytes");
+    writeFileSync(coverImagePath, "fake png bytes");
 
     const parsed = createVideoPostDraftInputSchema.parse({
       platform: "douyin",
       title: "Launch video",
       content: "This is a prepared video post.",
       video: videoPath,
+      coverImage: coverImagePath,
+      coverOrientation: "vertical",
       tags: ["mcp", "#automation"]
     });
 
@@ -122,6 +126,8 @@ describe("createVideoPostDraftInputSchema", () => {
       title: "Launch video",
       content: "This is a prepared video post.",
       video: videoPath,
+      coverImage: coverImagePath,
+      coverOrientation: "vertical",
       tags: ["mcp", "#automation"]
     });
 
@@ -197,6 +203,48 @@ describe("createVideoPostDraftInputSchema", () => {
       title: "Title",
       content: "Body",
       video: videoPath
+    });
+
+    expect(result.success).toBe(false);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("accepts valid Douyin video draft input without a custom cover image", () => {
+    const dir = mkdirTestDir();
+    const videoPath = join(dir, "clip.mp4");
+    writeFileSync(videoPath, "fake mp4 bytes");
+
+    const parsed = createVideoPostDraftInputSchema.parse({
+      platform: "douyin",
+      title: "Launch video",
+      content: "This is a prepared video post.",
+      video: videoPath,
+      tags: ["mcp"]
+    });
+
+    expect(parsed).toMatchObject({
+      platform: "douyin",
+      title: "Launch video",
+      content: "This is a prepared video post.",
+      video: videoPath,
+      tags: ["mcp"]
+    });
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("rejects an invalid custom cover image when one is provided", () => {
+    const dir = mkdirTestDir();
+    const videoPath = join(dir, "clip.mp4");
+    writeFileSync(videoPath, "fake mp4 bytes");
+
+    const result = createVideoPostDraftInputSchema.safeParse({
+      platform: "douyin",
+      title: "Title",
+      content: "Body",
+      video: videoPath,
+      coverImage: join(dir, "missing-cover.png"),
+      coverOrientation: "vertical"
     });
 
     expect(result.success).toBe(false);

@@ -2,15 +2,21 @@
 
 一个轻量级 MCP Server，用 Playwright 在可见浏览器里自动操作社交媒体创作者后台。
 
-> ⚠️ **重要：本项目需要同时安装 Skill 和 MCP 才能被 AI Agent 正确识别和使用。** 如果你刚部署完发现 Agent 不会用，99% 是因为这一步没做。详见下方 [部署步骤](#部署步骤)。
+> 重要：本项目需要同时安装 Skill 和 MCP，AI Agent 才能稳定识别并正确使用。只装 MCP 不装 Skill，Agent 往往会有工具但不知道流程；只装 Skill 不装 MCP，Agent 知道流程但无法操作浏览器。
 
-当前能力重点：
+当前重点能力：
 
-- 小红书图文：创建草稿，不点击最终发布。
-- 抖音图文：上传完成后选择"仅自己可见"，再点击发布。
-- 抖音视频：上传完成后选择"仅自己可见"，再点击发布。
+- 小红书图文：创建草稿，不点击最终发布
+- 抖音图文：上传完成后选择“仅自己可见”，再点击发布
+- 抖音视频：上传完成后选择“仅自己可见”，再点击发布
+- 抖音短信验证码续提交：支持本地常驻 smoke session
 
-项目只使用正常浏览器自动化，不生成内容，不绕过验证码，不逆向私有接口。账号登录、扫码、验证码等都需要按平台正常流程人工完成。
+项目只使用正常浏览器自动化：
+
+- 不生成内容
+- 不绕过验证码
+- 不逆向私有接口
+- 不保存账号密码
 
 ---
 
@@ -27,6 +33,7 @@
 - [工具说明](#工具说明)
 - [登录和使用流程](#登录和使用流程)
 - [Smoke 联调](#smoke-联调)
+- [抖音常驻 Smoke Session 控制器](#抖音常驻-smoke-session-控制器)
 - [开发验证](#开发验证)
 - [安全边界](#安全边界)
 
@@ -34,48 +41,40 @@
 
 ## 什么是 Skill / MCP
 
-本项目通过两种机制与 AI Agent 协作：
+本项目通过两种机制和 AI Agent 协作：
 
 | 机制 | 作用 | 类比 |
-|------|------|------|
-| **Skill** | 告诉 Agent "这个项目怎么用" — 平台操作流程、约束条件、常见错误 | 项目的"使用说明书" |
-| **MCP** | 暴露具体工具能力给 Agent — 打开浏览器、点击元素、上传文件 | 项目的"遥控器" |
+| --- | --- | --- |
+| Skill | 告诉 Agent“这个项目怎么用”，包括平台流程、约束、已验证经验 | 使用说明书 |
+| MCP | 暴露具体工具能力给 Agent，例如打开浏览器、上传文件、点击按钮 | 遥控器 |
 
-**只装 MCP 不装 Skill** → Agent 有工具但不知道怎么用，容易点错按钮、填错内容。  
-**只装 Skill 不装 MCP** → Agent 知道流程但没有工具，什么都做不了。  
-**两者都装** → Agent 既有说明书又有遥控器，能正确、安全地完成发布。
+只装 MCP 不装 Skill：Agent 有工具但容易乱点。  
+只装 Skill 不装 MCP：Agent 知道流程但做不了事。  
+两者都装：Agent 才能稳定、安全地执行。
 
 ---
 
 ## 部署步骤
 
-完整部署包含以下步骤，缺一不可：
+完整部署建议按这个顺序：
 
-```
-1. git clone 项目
-2. npm install 安装依赖
-3. npm run install-browsers 安装浏览器
-4. 配置 MCP Server（让 Agent 能调用工具）
-5. 安装 Skill（让 Agent 知道怎么用）
-6. 启动 MCP Server 或运行 Smoke 测试
-```
-
-下面逐条说明。
+1. `git clone` 项目
+2. `npm install`
+3. `npm run install-browsers`
+4. 配置 MCP Server
+5. 安装 Skill
+6. 启动 MCP Server 或运行 smoke 测试
 
 ---
 
 ## 平台能力
 
-| 平台 | 图文草稿 | 视频流程 | 文章草稿 |
+| 平台 | 图文 | 视频 | 验证码续提交 |
 | --- | --- | --- | --- |
-| 小红书 | 支持 | 不支持 | 不支持 |
-| 抖音 | 支持，仅自己可见后发布 | 支持，仅自己可见后发布 | 不支持 |
-| 知乎 | 预留 | 不支持 | 计划中 |
-| B站 | 计划中 | 计划中 | 不支持 |
-| CSDN | 预留 | 不支持 | 计划中 |
-| 微信公众号 | 预留 | 不支持 | 计划中 |
+| 小红书 | 支持，草稿 | 暂不支持 | 不需要 |
+| 抖音 | 支持，发布前设为仅自己可见 | 支持，发布前设为仅自己可见 | 支持 |
 
-后续平台通过 adapter capability 扩展，避免改乱已经可用的小红书和抖音流程。
+后续平台通过 adapter capability 扩展，避免打乱已跑通的小红书和抖音流程。
 
 ---
 
@@ -86,7 +85,7 @@
 - 可正常访问目标平台网页
 - 首次运行需要安装 Playwright Chromium
 
-本项目当前按 npm 方式部署和运行，不需要 Docker。
+当前默认按 npm 方式部署，不需要 Docker。
 
 ---
 
@@ -97,27 +96,19 @@ npm install
 npm run install-browsers
 ```
 
-如果 `playwright install chromium` 因网络失败，请先修复本机网络或代理后再重试。
-
 ---
 
 ## 配置 MCP Server
 
-MCP Server 是通用的 stdio 工具暴露协议，任何支持 MCP 的 Agent 都可以连接。
+MCP Server 通过 stdio 暴露工具，任何支持 MCP 的 Agent 都可以连接。
 
-### 通用的 MCP Server 启动命令
+### 通用启动命令
 
 ```bash
 npm run dev
 ```
 
-启动后通过 stdio 暴露工具能力。
-
-### 各 Agent 的配置方式
-
-不同 Agent 的 MCP 配置位置和格式略有差异，但本质都是告诉 Agent "如何启动这个 MCP Server"。
-
-#### Claude Code（项目级，推荐）
+### Claude Code（项目级，推荐）
 
 在项目根目录创建 `.claude/settings.json`：
 
@@ -127,21 +118,21 @@ npm run dev
     "social-media-pubulish-mcp": {
       "command": "npm",
       "args": ["run", "dev"],
-      "cwd": "D:/work/2026/code/life/自动化图文发布测试"
+      "cwd": "D:/work/2026/code/life/social_media_skill"
     }
   }
 }
 ```
 
-#### Claude Code（全局）
+### Claude Code（全局）
 
 ```bash
-claude mcp add social-media-pubulish-mcp npm run dev --cwd D:/work/2026/code/life/自动化图文发布测试
+claude mcp add social-media-pubulish-mcp npm run dev --cwd D:/work/2026/code/life/social_media_skill
 ```
 
-#### Cursor
+### Cursor / Codex / Kimi / DeepSeek / 其他支持 MCP 的 Agent
 
-在 Cursor Settings → MCP 中添加：
+核心都是告诉 Agent 如何启动这个 server：
 
 ```json
 {
@@ -149,92 +140,43 @@ claude mcp add social-media-pubulish-mcp npm run dev --cwd D:/work/2026/code/lif
     "social-media-pubulish-mcp": {
       "command": "npm",
       "args": ["run", "dev"],
-      "cwd": "D:/work/2026/code/life/自动化图文发布测试"
+      "cwd": "D:/work/2026/code/life/social_media_skill"
     }
   }
 }
 ```
 
-#### Codex / 其他支持 MCP 的 Agent
-
-在对应的 MCP 配置文件中添加：
-
-```json
-{
-  "mcpServers": {
-    "social-media-pubulish-mcp": {
-      "command": "npm",
-      "args": ["run", "dev"],
-      "cwd": "D:/work/2026/code/life/自动化图文发布测试"
-    }
-  }
-}
-```
-
-> 💡 **把 `cwd` 改成你自己的项目绝对路径。**
->
-> 💡 **验证 MCP 是否配置成功**：启动后 Agent 应该能看到 `check_login_status`、`open_login_page`、`create_image_post_draft`、`create_video_post_draft` 等工具。
+> 提示：如果你换了机器或目录，记得把 `cwd` 改成自己的项目绝对路径。
 
 ---
 
 ## 安装 Skill
 
-**这是最容易遗漏但最关键的步骤。**
+Skill 文件位于 `skills/` 目录，记录了已验证的操作流程和约束。
 
-项目自带的 Skill 文件位于 `skills/` 目录，记录了各平台已验证的操作流程和约束。每个 Skill 是标准的 Markdown 文件（带 YAML frontmatter），格式通用，可被任何支持 Skill 机制的 Agent 读取。
-
-不同 Agent 加载 Skill 的路径不同，但内容格式一致。
-
-### 各 Agent 的 Skill 安装方式
-
-#### Claude Code
+### Claude Code
 
 ```powershell
-# 在项目根目录执行
 mkdir -p .claude/skills
 cp -r skills/* .claude/skills/
 ```
 
-验证：
+### Cursor
 
-```powershell
-ls .claude/skills/
-# 应该看到：
-# douyin-private-image-publish
-# douyin-private-video-publish
-# xiaohongshu-draft-smoketest
-```
+把 `skills/` 下对应 `SKILL.md` 内容放到 Cursor Rules / Project Rules，或你的项目级规则目录。
 
-#### Cursor
+### Codex / Kimi / DeepSeek / 其他 Agent
 
-将 `skills/` 下的每个 `SKILL.md` 内容复制到 Cursor 的 Rules / Project Rules 中，或放入 `.cursor/rules/` 目录（如 Cursor 支持）。
+把 `skills/<name>/SKILL.md` 的内容作为项目上下文或系统提示注入即可。格式本身是通用的，差异只在于不同 Agent 从哪里读取。
 
-#### Codex / Kimi / DeepSeek / 其他 Agent
-
-将这些 Skill 文件的内容以系统提示（system prompt）或项目上下文的方式提供给 Agent。具体方式取决于各 Agent 的上下文注入机制：
-
-- **Codex**：可通过 `--instructions` 或项目级配置注入
-- **Kimi**：可通过"常用语"或项目上下文功能添加
-- **DeepSeek**：可通过对话前置提示或 API 系统消息注入
-- **通用方式**：在启动对话前，将 `skills/<name>/SKILL.md` 的内容粘贴给 Agent 作为上下文
-
-> 💡 **核心原则**：Skill 的内容（Markdown + YAML frontmatter）是通用的，不同 Agent 只是"在哪里读取"有差异。只要 Agent 能读到 Skill 里的操作流程和约束，就能正确执行。
-
-### Skill 内容说明
+### 当前主要 Skill
 
 | Skill | 作用 |
-|-------|------|
-| `douyin-private-image-publish` | 指导 Agent 完成抖音图文上传→填内容→选"仅自己可见"→发布的完整流程 |
-| `douyin-private-video-publish` | 指导 Agent 完成抖音视频上传→判断上传完成→选"仅自己可见"→发布的流程 |
-| `xiaohongshu-draft-smoketest` | 指导 Agent 完成小红书图文草稿创建流程，避免重复扫码登录 |
-
-每个 Skill 包含：
-- **操作流程**：按什么顺序执行
-- **核心约束**：不要点什么按钮、不要做什么操作
-- **常见错误**：容易踩的坑和如何避免
-- **回归验证**：代码修改后如何验证
-
-> 💡 **验证 Skill 是否生效**：向 Agent 提出"帮我发布抖音图文"时，Agent 应该能准确说出需要上传图片、填写标题、选择"仅自己可见"、点击发布，而不是摸索着乱点。如果 Agent 表现得很茫然，大概率是 Skill 没有被正确加载。
+| --- | --- |
+| `douyin-private-image-publish` | 抖音图文上传、填写内容、仅自己可见、发布 |
+| `douyin-private-video-publish` | 抖音视频上传完成判定、填写内容、仅自己可见、发布 |
+| `douyin-verification-workflow` | 抖音短信验证码续提交流程 |
+| `xiaohongshu-draft-smoketest` | 小红书图文草稿联调 |
 
 ---
 
@@ -244,12 +186,16 @@ ls .claude/skills/
 npm run dev
 ```
 
-MCP Server 通过 stdio 暴露工具能力。浏览器用户数据保存在 `.social-media-mcp/` 目录下，每个平台使用独立 profile。
+浏览器会话目录默认在：
 
-需要复用登录态时，固定设置同一个 profile 后缀：
+```txt
+.social-media-mcp/
+```
+
+需要复用同一套登录态时，固定设置：
 
 ```powershell
-$env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
+$env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-live3'
 ```
 
 ---
@@ -258,19 +204,13 @@ $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
 
 ### `check_login_status`
 
-检查平台是否已经登录。
-
 ```json
 {
   "platform": "douyin"
 }
 ```
 
-支持平台：`xiaohongshu`、`douyin`。
-
 ### `open_login_page`
-
-打开平台登录页或创作者中心页面。登录、扫码和验证码需要人工完成。
 
 ```json
 {
@@ -279,8 +219,6 @@ $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
 ```
 
 ### `create_image_post_draft`
-
-创建图文内容。小红书是草稿，抖音会在上传完成后选择"仅自己可见"并发布。
 
 小红书示例：
 
@@ -294,7 +232,7 @@ $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
 }
 ```
 
-抖音图文示例：
+抖音示例：
 
 ```json
 {
@@ -306,27 +244,7 @@ $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
 }
 ```
 
-输入规则：
-
-- `title` 必须非空。
-- `content` 必须非空。
-- `images` 至少包含一个存在的本地图片路径。**支持多张图片，用逗号分隔多个路径。**
-- 支持图片格式：`.jpg`、`.jpeg`、`.png`、`.webp`。
-- `tags` 可选，会转换为话题格式并填入内容。
-
-抖音成功结果示例：
-
-```json
-{
-  "platform": "douyin",
-  "status": "published",
-  "message": "Douyin image post was published with private visibility."
-}
-```
-
 ### `create_video_post_draft`
-
-首版仅支持抖音视频。注意：为了适配抖音当前页面，视频流程不是保存草稿，而是在上传完成后选择"仅自己可见"并发布。
 
 ```json
 {
@@ -338,144 +256,207 @@ $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
 }
 ```
 
-输入规则：
+当前 `coverImage` 是可选项；如果不传，走平台默认封面流程。
 
-- `platform` 必须为 `douyin`。
-- `title` 必须非空。
-- `content` 必须非空。
-- `video` 必须是存在的本地视频路径。
-- 支持视频格式：`.mp4`、`.mov`、`.m4v`。
-- 视频本身必须满足抖音上传要求，例如时长、格式、大小等。
+### `submit_verification_code`
 
-成功结果示例：
+用于抖音短信验证码弹窗续提交：
 
 ```json
 {
   "platform": "douyin",
-  "status": "published",
-  "message": "Douyin video post was published with private visibility."
+  "code": "123456"
 }
 ```
+
+前提：
+
+- 同一个抖音浏览器会话还活着
+- 页面正停在验证码弹窗上
 
 ---
 
 ## 登录和使用流程
 
-1. 调用 `open_login_page` 打开对应平台页面。
-2. 在可见浏览器窗口中手动登录。
-3. 调用 `check_login_status` 检查登录状态。
-4. 小红书图文调用 `create_image_post_draft` 创建草稿。
-5. 抖音图文调用 `create_image_post_draft`，工具会上传图片、等待上传完成、选择"仅自己可见"并发布。
-6. 抖音视频调用 `create_video_post_draft`，工具会上传视频、等待上传完成、选择"仅自己可见"并发布。
+1. 调 `open_login_page`
+2. 在可见浏览器里手动登录
+3. 调 `check_login_status`
+4. 小红书图文用 `create_image_post_draft` 创建草稿
+5. 抖音图文用 `create_image_post_draft` 完成上传、仅自己可见、发布
+6. 抖音视频用 `create_video_post_draft` 完成上传、仅自己可见、发布
+7. 如果抖音弹短信验证码，再用 `submit_verification_code` 续提交
 
-不要在同一个 profile 上同时启动多个浏览器自动化进程，否则可能出现 profile 锁定或登录态异常。
+不要在同一个 profile 上同时跑多个浏览器自动化进程，否则容易出现 profile 锁定和登录态异常。
 
 ---
 
 ## Smoke 联调
 
+### 通用 MCP smoke client
+
+```powershell
+$env:MCP_SMOKE_TOOL_ARGS_JSON='{"platform":"douyin"}'
+npm run smoke:mcp -- check_login_status
+```
+
 ### 小红书图文草稿
 
 ```powershell
 $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='smoketest'
-npm.cmd run smoke:xiaohongshu
+npm run smoke:xiaohongshu
 ```
 
-### 抖音图文仅自己可见发布
+### 抖音图文 / 视频
 
-推荐把中文标题、正文、标签写进 UTF-8 JSON 文件，再通过 `DOUYIN_SMOKE_INPUT_FILE` 传入，避免 `cmd` 批处理或错误编码把中文变成 `????`。
+为了避免中文在命令行里变成 `????`，推荐把标题、正文、标签写进 UTF-8 JSON 文件，再通过 `DOUYIN_SMOKE_INPUT_FILE` 传入。
 
-示例文件 `D:/work/2026/code/social_media_skill/.social-media-mcp/douyin-image-smoke.json`：
-
-```json
-{
-  "title": "抖音图文自动化测试",
-  "content": "这是一条用于验证抖音图文自动上传和发布流程的测试内容。",
-  "tags": ["自动化测试", "抖音图文", "playwright"]
-}
-```
+图文示例：
 
 ```powershell
-$env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
-$env:DOUYIN_LOGIN_POLL_INTERVAL_MS='30000'
+$env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-live3'
 $env:DOUYIN_SMOKE_MODE='image'
-$env:DOUYIN_IMAGE_PATH='D:/absolute/path/cover.png'
-$env:DOUYIN_SMOKE_INPUT_FILE='D:/work/2026/code/social_media_skill/.social-media-mcp/douyin-image-smoke.json'
-npm.cmd run smoke:douyin
+$env:DOUYIN_IMAGE_PATHS='D:/path/1.png|D:/path/2.png|D:/path/3.png'
+$env:DOUYIN_SMOKE_INPUT_FILE='D:/work/2026/code/life/social_media_skill/.social-media-mcp/douyin-image-smoke.json'
+npm run smoke:douyin:start
 ```
 
-**多图片支持**：`DOUYIN_IMAGE_PATH` 支持逗号分隔的多张图片路径：
+视频示例：
 
 ```powershell
-$env:DOUYIN_IMAGE_PATH='D:/path/1.png,D:/path/2.png,D:/path/3.png'
-```
-
-### 抖音视频仅自己可见发布
-
-中文标题、正文、标签同样推荐走 UTF-8 JSON 文件：
-
-示例文件 `D:/work/2026/code/social_media_skill/.social-media-mcp/douyin-video-smoke.json`：
-
-```json
-{
-  "title": "抖音视频自动化测试",
-  "content": "这是一条用于验证抖音视频上传完成识别和最终发布流程的测试内容。",
-  "tags": ["自动化测试", "抖音视频", "playwright"]
-}
-```
-
-```powershell
-$env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-realtest'
-$env:SOCIAL_MEDIA_MCP_CLOSE_BROWSER_ON_EXIT='0'
-$env:DOUYIN_LOGIN_POLL_INTERVAL_MS='30000'
-$env:DOUYIN_VIDEO_UPLOAD_COMPLETE_TIMEOUT_MS='240000'
-$env:DOUYIN_VIDEO_UPLOAD_SETTLE_MS='3000'
+$env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-live3'
 $env:DOUYIN_SMOKE_MODE='video'
 $env:DOUYIN_VIDEO_PATH='D:/absolute/path/video.mp4'
-$env:DOUYIN_SMOKE_INPUT_FILE='D:/work/2026/code/social_media_skill/.social-media-mcp/douyin-video-smoke.json'
-npm.cmd run smoke:douyin
+$env:DOUYIN_SMOKE_INPUT_FILE='D:/work/2026/code/life/social_media_skill/.social-media-mcp/douyin-video-smoke.json'
+npm run smoke:douyin:start
 ```
-
-默认情况下，smoke 脚本会在未登录时打开登录页并轮询登录状态。
-
-可选环境变量：
-
-- `DOUYIN_AUTO_OPEN_LOGIN=0`：不自动打开抖音登录页。
-- `DOUYIN_LOGIN_POLL_INTERVAL_MS=30000`：抖音登录页默认等待 30 秒后再检查一次登录状态。
-- `DOUYIN_SMOKE_INPUT_FILE`：从 UTF-8 JSON 文件读取 `title`、`content`、`tags`，推荐用于中文内容。
-- `XHS_AUTO_OPEN_LOGIN=0`：不自动打开小红书登录页。
-- `SOCIAL_MEDIA_MCP_CLOSE_BROWSER_ON_EXIT=0`：脚本结束后保留浏览器窗口，方便观察页面。
 
 ---
 
-## 抖音视频上传完成判定
+## 抖音常驻 Smoke Session 控制器
 
-抖音视频不能靠固定等待时间判断上传完成。当前流程按页面文字判断：
+为了解决“验证码已经发到手机，但几秒或几十秒后你才把验证码发回来”这个现实问题，抖音 smoke 不再是一条一次性命令，而是一个本地常驻 session 控制器。
 
-1. 先看到上传过程信号。
-2. 再看到"预览视频"。
-3. 同时不再看到上传过程信号。
+### 为什么需要它
 
-上传过程信号包括：
+一次性 smoke 会遇到这个问题：
 
-- "上传过程中请不要删除/移动文件"
-- "已上传"
-- "当前速度"
-- "剩余时间"
-- "取消上传"
-- "上传中"
-- "正在上传"
-- "处理中"
-- "转码中"
-- 百分比进度，例如 `8%`
+1. 发布流程走到验证码弹窗
+2. 短信已经发出
+3. 执行命令结束
+4. 浏览器上下文和 MCP 会话一起消失
+5. 拿到验证码后，也没有活着的会话去填码和点“验证”
 
-只有满足完成条件后，才会继续填写内容、选择"仅自己可见"并点击最终发布按钮。
+现在改成：
 
-更详细的真实测试流程见：
+1. `start` 启动后台 worker
+2. worker 连接正式 MCP Server
+3. worker 持有活着的浏览器上下文
+4. 如果遇到验证码弹窗，worker 把状态写入 session 文件并等待
+5. 你把验证码发回来后，再执行 `submit`
+6. worker 读取验证码，调用 `submit_verification_code`
+7. 自动填码并点击“验证”
 
-- [skills/douyin-private-image-publish/SKILL.md](skills/douyin-private-image-publish/SKILL.md)
-- [skills/douyin-private-video-publish/SKILL.md](skills/douyin-private-video-publish/SKILL.md)
-- [skills/xiaohongshu-draft-smoketest/SKILL.md](skills/xiaohongshu-draft-smoketest/SKILL.md)
+### 命令
+
+启动会话：
+
+```powershell
+npm run smoke:douyin:start
+```
+
+查看状态：
+
+```powershell
+npm run smoke:douyin:status -- <session-id>
+```
+
+等待状态变化：
+
+```powershell
+npm run smoke:douyin:watch -- <session-id>
+```
+
+提交验证码：
+
+```powershell
+npm run smoke:douyin:submit -- <session-id> <code>
+```
+
+停止会话：
+
+```powershell
+npm run smoke:douyin:stop -- <session-id>
+```
+
+### 会话状态文件
+
+保存在：
+
+```txt
+.social-media-mcp/douyin-smoke-sessions/
+```
+
+每个会话一个 JSON，记录：
+
+- `sessionId`
+- 当前状态
+- worker pid
+- 最近一次 MCP 结果
+- 是否在等待验证码
+- 你提交的验证码
+
+### 原理
+
+核心很简单：
+
+1. `start` 先创建 session 文件
+2. 然后在后台启动一个独立 Node worker
+3. worker 再启动本仓库正式 MCP Server 的 stdio 会话
+4. worker 负责真正调用：
+   - `check_login_status`
+   - `open_login_page`
+   - `create_image_post_draft`
+   - `create_video_post_draft`
+   - `submit_verification_code`
+5. `submit` 命令本身不直接碰浏览器，它只是把验证码写入 session 文件
+6. 后台 worker 看到验证码后，再继续提交
+
+也就是说，这里的“跨消息继续”靠的是：
+
+- 一个活着的后台 worker
+- 一个活着的 MCP / 浏览器会话
+- 一个本地 session 状态文件
+
+### 隐私风险
+
+这套控制器会保存：
+
+- 浏览器登录态  
+  保存在 `.social-media-mcp/<platform>-<profileSuffix>/`
+- 本地 session 状态 JSON  
+  保存在 `.social-media-mcp/douyin-smoke-sessions/`
+- 你提交的验证码  
+  会短暂写入 session JSON，供后台 worker 继续提交
+
+它不会：
+
+- 保存账号密码
+- 逆向私有接口
+- 把验证码上传到远端服务
+- 把登录态同步到云端
+
+实际风险主要在本机：
+
+1. 如果别人能访问你的电脑和工作目录，就可能看到这些本地状态文件和浏览器 profile
+2. 验证码为了跨命令续提交，会短暂落盘
+3. 浏览器 profile 目录本身就是本地敏感数据
+
+建议：
+
+- 保持 `.social-media-mcp/` 在 `.gitignore`
+- 联调结束后清理不需要的 session 文件
+- 用独立 `profileSuffix` 区分测试账号
+- 不在多人共用机器上长期保留创作者后台登录态
 
 ---
 
@@ -484,25 +465,25 @@ npm.cmd run smoke:douyin
 修改代码后至少运行：
 
 ```powershell
-npm.cmd run typecheck
-npm.cmd test
+npm run typecheck
+npm test
 ```
 
-如果改动影响真实页面流程，再运行对应 smoke 命令。
+如果改动影响真实页面流程，再跑对应 smoke。
 
 ---
 
 ## 安全边界
 
-- 只使用正常浏览器自动化。
-- 不保存用户名或密码。
-- 不绕过验证码或平台验证。
-- 不使用逆向得到的私有接口。
-- 小红书图文默认只创建草稿。
-- 抖音图文和抖音视频会发布，但都会先选择"仅自己可见"。
+- 只使用正常浏览器自动化
+- 不保存用户名或密码
+- 不绕过验证码或平台验证
+- 不调用逆向私有接口
+- 小红书图文默认只创建草稿
+- 抖音图文和抖音视频会发布，但都会先选择“仅自己可见”
 
 ---
 
 ## 参考
 
-本项目学习了 `flyerhzm/douyin-mcp` 这类项目中简单清晰的 Playwright + MCP 思路，也参考了多平台发布工具的产品方向，但不会复制 `xiaohongshu-mcp`、`douyin-mcp` 或 `Wechatsync` 的代码。
+本项目学习了 `flyerhzm/douyin-mcp` 这类项目中简单直接的 Playwright + MCP 组合方式，也参考了多平台发布工具的产品方向，但不会复制 `xiaohongshu-mcp`、`douyin-mcp` 或 `Wechatsync` 的代码。
