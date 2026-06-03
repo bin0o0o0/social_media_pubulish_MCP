@@ -79,7 +79,7 @@ async function main(): Promise<void> {
       return;
     }
 
-    const draftResult = await createDraft(session.client, { title, content, imagePath, tags });
+    const draftResult = await createDraft(session.client, { title, content, imagePath: imagePaths[0], tags });
     console.log(JSON.stringify(draftResult, null, 2));
 
     process.exitCode = draftResult.status === "draft_created" ? 0 : 1;
