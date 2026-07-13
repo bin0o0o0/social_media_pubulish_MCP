@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export type DouyinSmokeSessionMode = "image" | "video";
@@ -83,6 +83,41 @@ export function readDouyinSmokeSession(
   }
 
   return JSON.parse(readFileSync(filePath, "utf8")) as DouyinSmokeSessionRecord;
+}
+
+export function listDouyinSmokeSessions(workspaceRoot: string): DouyinSmokeSessionRecord[] {
+  const directory = getDouyinSmokeSessionDirectory(workspaceRoot);
+  if (!existsSync(directory)) {
+    return [];
+  }
+
+  return readdirSync(directory)
+    .filter((name) => name.endsWith(".json"))
+    .map((name) => {
+      const raw = readFileSync(join(directory, name), "utf8");
+      return JSON.parse(raw) as DouyinSmokeSessionRecord;
+    })
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export function findActiveDouyinSmokeSession(
+  workspaceRoot: string,
+  profileSuffix: string | null,
+  isProcessAlive: (pid: number) => boolean
+): DouyinSmokeSessionRecord | null {
+  return (
+    listDouyinSmokeSessions(workspaceRoot).find((session) => {
+      if (session.profileSuffix !== profileSuffix) {
+        return false;
+      }
+
+      if (session.status !== "running" && session.status !== "awaiting_verification") {
+        return false;
+      }
+
+      return typeof session.workerPid === "number" && isProcessAlive(session.workerPid);
+    }) ?? null
+  );
 }
 
 export function updateDouyinSmokeSession(

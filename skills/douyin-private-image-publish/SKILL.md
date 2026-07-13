@@ -28,6 +28,8 @@ description: Use when an AI coding agent needs to validate or repair the Douyin 
 - 登录页打开后默认给 30 秒时间，不要 5 秒就刷新。
 - 不要把“保存草稿”“暂存”“高清发布”“发布视频”“发布图文”误当成最终发布按钮。
 - 最终发布前必须先选择“仅自己可见”。
+- 重试时复用同一个 `SOCIAL_MEDIA_MCP_PROFILE_SUFFIX`；不要删除 `.social-media-mcp/`，否则会丢登录态。
+- 不要重复手动启动 `npm run dev`；需要排查重复进程时先运行 `npm run mcp:processes`。
 
 ## 图文流程
 
@@ -78,6 +80,8 @@ $env:DOUYIN_IMAGE_PATH='C:\Users\Administrator\Pictures\Saved Pictures\v2-d70a93
 $env:DOUYIN_SMOKE_INPUT_FILE='D:/work/2026/code/social_media_skill/.social-media-mcp/douyin-image-smoke.json'
 npm.cmd run smoke:douyin
 ```
+
+如果同一个 profile 已有活跃 smoke session，`smoke:douyin`/`smoke:douyin:start` 会返回已有 `sessionId`，继续 watch/status 即可，不要另起一个并发流程抢同一个浏览器 profile。
 
 成功时 JSON 结果应包含：
 

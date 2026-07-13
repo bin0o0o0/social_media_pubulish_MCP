@@ -39,6 +39,7 @@ description: Use when any coding agent needs to run or continue the Douyin image
 
 - 默认使用中文和用户沟通
 - 默认复用同一个 `SOCIAL_MEDIA_MCP_PROFILE_SUFFIX`
+- 启动前先确认同 profile 是否已有活跃 smoke session；已有时复用已有 `sessionId`
 - 不要在拿到验证码前关闭浏览器
 - 不要擅自结束 smoke session
 - 一旦状态进入 `awaiting_verification`，必须明确告诉用户“短信验证码已发送”
@@ -64,8 +65,9 @@ npm run smoke:douyin:start
 - `SOCIAL_MEDIA_MCP_PROFILE_SUFFIX` 要在重试时保持一致
 - `DOUYIN_IMAGE_PATHS` 用 `|` 分隔多图路径
 - `DOUYIN_AUTO_OPEN_LOGIN='0'` 表示这次依赖已有登录态
+- 如果同一个 profile 已有 `running` 或 `awaiting_verification` 的活跃 worker，`start` 会返回已有 session，不会再创建第二个 worker
 
-启动后会创建一个新的 `sessionId`。
+启动后会返回一个 `sessionId`。如果返回的是已有 session，继续使用这个 `sessionId` 执行 `watch`、`status`、`submit` 或 `stop`。
 
 ### 2. 立刻进入 watch
 
@@ -151,6 +153,24 @@ npm run smoke:douyin:stop -- <session-id>
 
 - 还没收到验证码前
 - 用户还没确认页面结果前
+
+## 进程和登录态规则
+
+重复 Node 进程只清理进程，不清理登录态。登录态保存在 `.social-media-mcp/`，不要删除这个目录，除非用户明确要求重置登录。
+
+排查当前仓库启动的 MCP/worker 进程：
+
+```powershell
+npm run mcp:processes
+```
+
+确认要清理当前仓库的 MCP/worker 进程时：
+
+```powershell
+npm run mcp:processes:kill
+```
+
+不要手动重复运行 `npm run dev`。MCP 客户端需要 stdio server 时，优先使用直接 Node 入口：`node ./node_modules/tsx/dist/cli.mjs ./src/server.ts`。
 
 ## 关键命令速查
 
