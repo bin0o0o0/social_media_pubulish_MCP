@@ -28,7 +28,8 @@ Do not use this as a general publishing workflow for other platforms.
 3. Let the script check login first.
 4. If login is missing, let it open the Xiaohongshu creator page and wait for QR login.
 5. After login, let it create one draft with the fixture image.
-6. Let the script exit on its own; it closes its Playwright browser session during cleanup.
+6. Let the script exit on its own; by default it keeps the Playwright browser window open for inspection.
+7. Only set `SOCIAL_MEDIA_MCP_CLOSE_BROWSER_ON_EXIT=1` when you explicitly want cleanup to close the browser.
 
 ## Command
 
