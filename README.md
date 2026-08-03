@@ -111,8 +111,10 @@ MCP Server 通过 stdio 暴露工具，任何支持 MCP 的 Agent 都可以连�
 ### 通用启动命令
 
 ```bash
-npm run dev
+node ./node_modules/tsx/dist/cli.mjs ./src/server.ts
 ```
+
+不要把 MCP 配置成 `npm run dev`，否则一次 stdio 连接会多出一层 npm Node 进程。Agent 管理 MCP stdio 时，也不要再额外手动开一个 `npm run dev`。
 
 ### Claude Code（项目级，推荐）
 
@@ -122,9 +124,9 @@ npm run dev
 {
   "mcpServers": {
     "social-media-pubulish-mcp": {
-      "command": "npm",
-      "args": ["run", "dev"],
-      "cwd": "D:/work/2026/code/life/social_media_skill"
+      "command": "node",
+      "args": ["./node_modules/tsx/dist/cli.mjs", "./src/server.ts"],
+      "cwd": "D:/work/2026/code/social_media_skill"
     }
   }
 }
@@ -133,7 +135,7 @@ npm run dev
 ### Claude Code（全局）
 
 ```bash
-claude mcp add social-media-pubulish-mcp npm run dev --cwd D:/work/2026/code/life/social_media_skill
+claude mcp add social-media-pubulish-mcp node ./node_modules/tsx/dist/cli.mjs ./src/server.ts --cwd D:/work/2026/code/social_media_skill
 ```
 
 ### Cursor / Codex / Kimi / DeepSeek / 其他支持 MCP 的 Agent
@@ -144,9 +146,9 @@ claude mcp add social-media-pubulish-mcp npm run dev --cwd D:/work/2026/code/lif
 {
   "mcpServers": {
     "social-media-pubulish-mcp": {
-      "command": "npm",
-      "args": ["run", "dev"],
-      "cwd": "D:/work/2026/code/life/social_media_skill"
+      "command": "node",
+      "args": ["./node_modules/tsx/dist/cli.mjs", "./src/server.ts"],
+      "cwd": "D:/work/2026/code/social_media_skill"
     }
   }
 }
@@ -189,8 +191,10 @@ cp -r skills/* .claude/skills/
 ## 启动 MCP Server
 
 ```powershell
-npm run dev
+node .\node_modules\tsx\dist\cli.mjs .\src\server.ts
 ```
+
+如果 MCP 客户端已经配置了上面的 stdio server，通常不需要手动启动。重复启动只会增加 Node 进程，不会提升稳定性。
 
 浏览器会话目录默认在：
 
@@ -474,6 +478,8 @@ npm run smoke:douyin:start
 npm run smoke:douyin:start
 ```
 
+如果同一个 `SOCIAL_MEDIA_MCP_PROFILE_SUFFIX` 已有 `running` 或 `awaiting_verification` 的活跃 worker，`start` 会直接返回已有 `sessionId`，不会再启动第二个 worker 去抢同一个浏览器 profile。
+
 查看状态：
 
 ```powershell
@@ -520,16 +526,17 @@ npm run smoke:douyin:stop -- <session-id>
 核心很简单：
 
 1. `start` 先创建 session 文件
-2. 然后在后台启动一个独立 Node worker
-3. worker 再启动本仓库正式 MCP Server 的 stdio 会话
-4. worker 负责真正调用：
+2. 如果同 profile 已有活跃 session，就复用它
+3. 如果没有活跃 session，就在后台启动一个独立 Node worker
+4. worker 再启动本仓库正式 MCP Server 的 stdio 会话
+5. worker 负责真正调用：
    - `check_login_status`
    - `open_login_page`
    - `create_image_post_draft`
    - `create_video_post_draft`
    - `submit_verification_code`
-5. `submit` 命令本身不直接碰浏览器，它只是把验证码写入 session 文件
-6. 后台 worker 看到验证码后，再继续提交
+6. `submit` 命令本身不直接碰浏览器，它只是把验证码写入 session 文件
+7. 后台 worker 看到验证码后，再继续提交
 
 也就是说，这里的“跨消息继续”靠的是：
 
