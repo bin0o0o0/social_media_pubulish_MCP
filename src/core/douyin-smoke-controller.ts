@@ -6,6 +6,7 @@ import { callJsonTool, createLocalMcpClient } from "./local-mcp-client.js";
 import {
   attachVerificationCodeToSession,
   createDouyinSmokeSessionRecord,
+  findActiveDouyinSmokeSession,
   markDouyinSmokeSessionStopRequested,
   readDouyinSmokeSession,
   updateDouyinSmokeSession,
@@ -19,6 +20,16 @@ export type StartDouyinSmokeSessionInput = {
   mode: DouyinSmokeSessionMode;
   draftInput: DouyinSmokeSessionRecord["draftInput"];
   settings: DouyinSmokeSessionRecord["settings"];
+};
+
+export type DouyinSmokeWorkerProcess = {
+  pid?: number;
+  unref(): void;
+};
+
+type StartDouyinSmokeSessionDependencies = {
+  isProcessAlive?: (pid: number) => boolean;
+  spawnWorker?: (input: { workspaceRoot: string; sessionId: string }) => DouyinSmokeWorkerProcess;
 };
 
 type LoginStatusResult = {
@@ -39,7 +50,20 @@ type VerificationResult = {
   message: string;
 };
 
-export function startDouyinSmokeSession(input: StartDouyinSmokeSessionInput): DouyinSmokeSessionRecord {
+export function startDouyinSmokeSession(
+  input: StartDouyinSmokeSessionInput,
+  dependencies: StartDouyinSmokeSessionDependencies = {}
+): DouyinSmokeSessionRecord {
+  const isProcessAlive = dependencies.isProcessAlive ?? isPidAlive;
+  const activeSession = findActiveDouyinSmokeSession(input.workspaceRoot, input.profileSuffix, isProcessAlive);
+  if (activeSession) {
+    const profileLabel = input.profileSuffix ?? "default";
+    return updateDouyinSmokeSession(input.workspaceRoot, {
+      ...activeSession,
+      message: `Reusing active Douyin smoke session for profile ${profileLabel}.`
+    });
+  }
+
   const sessionId = `douyin-${Date.now()}-${randomUUID().slice(0, 8)}`;
   let record = createDouyinSmokeSessionRecord({
     sessionId,
@@ -50,22 +74,10 @@ export function startDouyinSmokeSession(input: StartDouyinSmokeSessionInput): Do
   });
   record = updateDouyinSmokeSession(input.workspaceRoot, record);
 
-  const child = spawn(
-    process.execPath,
-    [
-      resolveTsxEntrypoint(input.workspaceRoot),
-      resolveDouyinScriptEntrypoint(input.workspaceRoot),
-      "worker",
-      sessionId
-    ],
-    {
-      cwd: input.workspaceRoot,
-      env: process.env,
-      stdio: "ignore",
-      detached: true,
-      windowsHide: true
-    }
-  );
+  const child = (dependencies.spawnWorker ?? spawnDouyinSmokeWorker)({
+    workspaceRoot: input.workspaceRoot,
+    sessionId
+  });
   child.unref();
 
   record = updateDouyinSmokeSession(input.workspaceRoot, {
@@ -76,6 +88,34 @@ export function startDouyinSmokeSession(input: StartDouyinSmokeSessionInput): Do
   });
 
   return record;
+}
+
+function spawnDouyinSmokeWorker(input: { workspaceRoot: string; sessionId: string }): DouyinSmokeWorkerProcess {
+  return spawn(
+    process.execPath,
+    [
+      resolveTsxEntrypoint(input.workspaceRoot),
+      resolveDouyinScriptEntrypoint(input.workspaceRoot),
+      "worker",
+      input.sessionId
+    ],
+    {
+      cwd: input.workspaceRoot,
+      env: process.env,
+      stdio: "ignore",
+      detached: true,
+      windowsHide: true
+    }
+  );
+}
+
+function isPidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function getDouyinSmokeSessionStatus(workspaceRoot: string, sessionId: string) {

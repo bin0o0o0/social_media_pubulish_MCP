@@ -1,11 +1,13 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import {
   checkLoginStatusInputSchema,
+  createArticlePostDraftInputSchema,
   createImagePostDraftInputSchema,
   createVideoPostDraftInputSchema,
   openLoginPageInputSchema,
   submitVerificationCodeInputSchema,
   type CheckLoginStatusInput,
+  type CreateArticlePostDraftInput,
   type CreateImagePostDraftInput,
   type CreateVideoPostDraftInput,
   type OpenLoginPageInput,
@@ -74,6 +76,31 @@ export async function handleCreateImagePostDraft(
     }
 
     const result = await adapter.createImagePostDraft(parsed);
+    return createTextJsonResult(result);
+  } catch (error) {
+    return createTextJsonResult({
+      platform: input.platform,
+      status: "failed",
+      message: errorMessage(error)
+    });
+  }
+}
+
+export async function handleCreateArticlePostDraft(
+  input: CreateArticlePostDraftInput,
+  adapter: PlatformAdapter = getPlatformAdapter(input.platform)
+): Promise<CallToolResult> {
+  try {
+    const parsed = createArticlePostDraftInputSchema.parse(input);
+    if (!adapter.createArticlePostDraft) {
+      return createTextJsonResult({
+        platform: parsed.platform,
+        status: "failed",
+        message: `Platform ${parsed.platform} does not support article post drafts.`
+      });
+    }
+
+    const result = await adapter.createArticlePostDraft(parsed);
     return createTextJsonResult(result);
   } catch (error) {
     return createTextJsonResult({

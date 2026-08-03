@@ -4,10 +4,85 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import {
   createTextJsonResult,
+  handleCreateArticlePostDraft,
   handleCreateImagePostDraft,
   handleCreateVideoPostDraft,
   handleSubmitVerificationCode
 } from "../../src/tools/mcp.js";
+
+describe("handleCreateArticlePostDraft", () => {
+  test("passes validated Markdown article input to the adapter", async () => {
+    const dir = join(tmpdir(), `social-media-mcp-${crypto.randomUUID()}`);
+    mkdirSync(dir, { recursive: true });
+    const markdownPath = join(dir, "article.md");
+    writeFileSync(markdownPath, "# Body");
+    let receivedPath: string | undefined;
+
+    const result = await handleCreateArticlePostDraft(
+      {
+        platform: "csdn",
+        title: "Title",
+        markdownPath,
+        tags: ["typescript"]
+      },
+      {
+        platform: "csdn",
+        capabilities: { articlePostDraft: true },
+        async checkLoginStatus() {
+          return { platform: "csdn", loggedIn: true, message: "logged in" };
+        },
+        async openLoginPage() {
+          return { platform: "csdn", opened: true, message: "opened" };
+        },
+        async createArticlePostDraft(input) {
+          receivedPath = input.markdownPath;
+          return {
+            platform: "csdn",
+            status: "draft_created",
+            message: "created",
+            warnings: ["remote image"]
+          };
+        }
+      }
+    );
+
+    expect(receivedPath).toBe(markdownPath);
+    expect(JSON.parse(firstText(result))).toMatchObject({
+      platform: "csdn",
+      status: "draft_created",
+      warnings: ["remote image"]
+    });
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("returns a stable unsupported result", async () => {
+    const dir = join(tmpdir(), `social-media-mcp-${crypto.randomUUID()}`);
+    mkdirSync(dir, { recursive: true });
+    const markdownPath = join(dir, "article.md");
+    writeFileSync(markdownPath, "# Body");
+
+    const result = await handleCreateArticlePostDraft(
+      { platform: "zhihu", title: "Title", markdownPath },
+      {
+        platform: "zhihu",
+        capabilities: {},
+        async checkLoginStatus() {
+          return { platform: "zhihu", loggedIn: true, message: "logged in" };
+        },
+        async openLoginPage() {
+          return { platform: "zhihu", opened: true, message: "opened" };
+        }
+      }
+    );
+
+    expect(JSON.parse(firstText(result))).toMatchObject({
+      platform: "zhihu",
+      status: "failed",
+      message: "Platform zhihu does not support article post drafts."
+    });
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
 
 describe("createTextJsonResult", () => {
   test("serializes a payload as MCP text content", () => {

@@ -10,6 +10,9 @@
 - 抖音图文：上传完成后选择“仅自己可见”，再点击发布
 - 抖音视频：上传完成后选择“仅自己可见”，再点击发布
 - 抖音短信验证码续提交：支持本地常驻 smoke session
+- CSDN 文章：导入 Markdown 并保存草稿
+- 知乎文章：导入 Markdown 并保存草稿
+- 微信公众号文章：Markdown 转安全富文本并保存草稿
 
 项目只使用正常浏览器自动化：
 
@@ -69,10 +72,13 @@
 
 ## 平台能力
 
-| 平台 | 图文 | 视频 | 验证码续提交 |
-| --- | --- | --- | --- |
-| 小红书 | 支持，草稿 | 暂不支持 | 不需要 |
-| 抖音 | 支持，发布前设为仅自己可见 | 支持，发布前设为仅自己可见 | 支持 |
+| 平台 | 图文 | 视频 | Markdown 文章 | 验证码续提交 |
+| --- | --- | --- | --- | --- |
+| 小红书 | 支持，草稿 | 暂不支持 | 暂不支持 | 不需要 |
+| 抖音 | 支持，发布前设为仅自己可见 | 支持，发布前设为仅自己可见 | 暂不支持 | 支持 |
+| CSDN | 暂不支持 | 暂不支持 | 支持，草稿 | 不需要 |
+| 知乎 | 暂不支持 | 暂不支持 | 支持，草稿 | 不需要 |
+| 微信公众号 | 暂不支持 | 暂不支持 | 支持，草稿 | 不需要 |
 
 后续平台通过 adapter capability 扩展，避免打乱已跑通的小红书和抖音流程。
 
@@ -198,6 +204,35 @@ npm run dev
 $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-live3'
 ```
 
+### Codex 长时间运行资源守护
+
+如果 Codex 反复拉起本项目 MCP，可能会留下多组 `tsx src/server.ts` 和 `node_repl` 进程，时间长了会推高内存压缩并造成输入卡顿。可以用项目内守护脚本定期清理重复进程：
+
+```bash
+npm run guard:codex:status
+npm run guard:codex
+npm run guard:codex:watch
+```
+
+长期后台运行可以安装为 macOS LaunchAgent：
+
+```bash
+npm run guard:codex:install
+```
+
+停止后台守护：
+
+```bash
+npm run guard:codex:uninstall
+```
+
+默认每 30 秒检查一次，只保留 1 组本项目 MCP。`node_repl` 默认只统计不清理，确实需要时可通过环境变量开启。可通过环境变量调整：
+
+```bash
+SOCIAL_MEDIA_GUARD_INTERVAL_SECONDS=60 SOCIAL_MEDIA_GUARD_MAX_MCP_SERVERS=1 npm run guard:codex:watch
+SOCIAL_MEDIA_GUARD_MAX_NODE_REPL=1 npm run guard:codex:watch
+```
+
 ---
 
 ## 工具说明
@@ -231,6 +266,44 @@ $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-live3'
   "tags": ["mcp", "automation"]
 }
 ```
+
+### `create_article_post_draft`
+
+CSDN：
+
+```json
+{
+  "platform": "csdn",
+  "title": "Prepared article",
+  "markdownPath": "D:/absolute/path/article.md",
+  "tags": ["typescript", "automation"],
+  "category": "前端"
+}
+```
+
+知乎：
+
+```json
+{
+  "platform": "zhihu",
+  "title": "Prepared article",
+  "markdownPath": "D:/absolute/path/article.md",
+  "tags": ["自动化"]
+}
+```
+
+微信公众号必须提供封面：
+
+```json
+{
+  "platform": "wechat",
+  "title": "Prepared article",
+  "markdownPath": "D:/absolute/path/article.md",
+  "coverImage": "D:/absolute/path/cover.png"
+}
+```
+
+Markdown 文件只保存正文。相对图片路径以 Markdown 文件所在目录为基准，本地图片会上传到目标平台；远程图片 URL 会保留并在结果的 `warnings` 中提示风险。
 
 抖音示例：
 
@@ -285,6 +358,7 @@ $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='douyin-live3'
 5. 抖音图文用 `create_image_post_draft` 完成上传、仅自己可见、发布
 6. 抖音视频用 `create_video_post_draft` 完成上传、仅自己可见、发布
 7. 如果抖音弹短信验证码，再用 `submit_verification_code` 续提交
+8. CSDN、知乎和微信公众号使用 `create_article_post_draft` 保存文章草稿
 
 不要在同一个 profile 上同时跑多个浏览器自动化进程，否则容易出现 profile 锁定和登录态异常。
 
@@ -305,6 +379,42 @@ npm run smoke:mcp -- check_login_status
 $env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='smoketest'
 npm run smoke:xiaohongshu
 ```
+
+### Markdown 文章草稿
+
+三个平台共用以下环境变量：
+
+- `ARTICLE_MD_PATH`：Markdown 绝对路径，必填
+- `ARTICLE_TITLE`：文章标题，必填
+- `ARTICLE_COVER_IMAGE`：封面绝对路径，微信公众号必填
+- `ARTICLE_TAGS`：英文逗号分隔的标签，可选
+- `ARTICLE_CATEGORY`：CSDN 分类，可选
+- `ARTICLE_LOGIN_POLL_INTERVAL_MS`：登录检查间隔，默认 `30000` 毫秒
+- `ARTICLE_LOGIN_POLL_ATTEMPTS`：登录检查次数，默认 `20`
+
+```powershell
+$env:SOCIAL_MEDIA_MCP_PROFILE_SUFFIX='article-smoke'
+$env:ARTICLE_MD_PATH='D:/absolute/path/article.md'
+$env:ARTICLE_TITLE='Markdown article smoke'
+$env:ARTICLE_TAGS='typescript,automation'
+$env:ARTICLE_CATEGORY='前端'
+npm run smoke:csdn
+```
+
+知乎将最后一行改为：
+
+```powershell
+npm run smoke:zhihu
+```
+
+微信公众号还要设置封面：
+
+```powershell
+$env:ARTICLE_COVER_IMAGE='D:/absolute/path/cover.png'
+npm run smoke:wechat
+```
+
+所有文章 smoke 只保存草稿，不执行公开发布或群发。
 
 ### 抖音图文 / 视频
 

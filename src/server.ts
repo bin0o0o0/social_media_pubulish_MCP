@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   checkLoginStatusInputSchema,
+  createArticlePostDraftInputSchema,
   createImagePostDraftInputSchema,
   createVideoPostDraftInputSchema,
   openLoginPageInputSchema,
@@ -11,6 +12,7 @@ import {
 } from "./core/schemas.js";
 import {
   handleCheckLoginStatus,
+  handleCreateArticlePostDraft,
   handleCreateImagePostDraft,
   handleCreateVideoPostDraft,
   handleOpenLoginPage,
@@ -41,6 +43,16 @@ export function createServer(): McpServer {
       inputSchema: openLoginPageInputSchema
     },
     async (args) => handleOpenLoginPage(args)
+  );
+
+  server.registerTool(
+    "create_article_post_draft",
+    {
+      title: "Create Article Post Draft",
+      description: "Create an article draft from a Markdown file and platform metadata.",
+      inputSchema: createArticlePostDraftInputSchema
+    },
+    async (args) => handleCreateArticlePostDraft(args)
   );
 
   server.registerTool(

@@ -30,6 +30,8 @@ description: Use when an AI coding agent needs to validate or repair the Douyin 
 - 不要在视频还显示“上传过程中请不要删除/移动文件”时点击发布。
 - 不要点击左侧“高清发布”“发布视频”“发布图文”等入口按钮来冒充最终发布按钮。
 - 最终发布前必须先选择“仅自己可见”。
+- 重试时复用同一个 `SOCIAL_MEDIA_MCP_PROFILE_SUFFIX`；不要删除 `.social-media-mcp/`，否则会丢登录态。
+- 不要重复手动启动 `npm run dev`；需要排查重复进程时先运行 `npm run mcp:processes`。
 
 ## 上传完成判定
 
@@ -134,6 +136,8 @@ $env:DOUYIN_VIDEO_PATH='C:\Users\Administrator\Videos\NVIDIA\League of Legends\L
 $env:DOUYIN_SMOKE_INPUT_FILE='D:/work/2026/code/social_media_skill/.social-media-mcp/douyin-video-smoke.json'
 npm.cmd run smoke:douyin
 ```
+
+如果同一个 profile 已有活跃 smoke session，`smoke:douyin`/`smoke:douyin:start` 会返回已有 `sessionId`，继续 watch/status 即可，不要另起一个并发流程抢同一个浏览器 profile。
 
 成功时 JSON 结果应包含：
 

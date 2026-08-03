@@ -50,12 +50,16 @@ export async function createLocalMcpClient(
 export async function callJsonTool<T extends JsonObject>(
   client: Client,
   name: string,
-  args: JsonObject
+  args: JsonObject,
+  timeoutMs?: number
 ): Promise<T> {
-  const result = (await client.callTool({
+  const request = {
     name,
     arguments: args
-  })) as CallToolResult;
+  };
+  const result = (await (timeoutMs
+    ? client.callTool(request, undefined, { timeout: timeoutMs })
+    : client.callTool(request))) as CallToolResult;
 
   return parseTextToolResult<T>(result);
 }

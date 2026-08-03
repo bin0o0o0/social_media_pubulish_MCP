@@ -1,4 +1,5 @@
 import type {
+  CreateArticlePostDraftInput,
   CreateImagePostDraftInput,
   CreateVideoPostDraftInput,
   Platform,
@@ -25,6 +26,9 @@ export type PostDraftResult = {
 
 export type CreateImagePostDraftResult = PostDraftResult;
 export type CreateVideoPostDraftResult = PostDraftResult;
+export type CreateArticlePostDraftResult = PostDraftResult & {
+  warnings?: string[];
+};
 
 export type SubmitVerificationCodeResult = {
   platform: Platform;
@@ -44,6 +48,7 @@ export type PlatformAdapter = {
   capabilities: PlatformCapabilities;
   checkLoginStatus(): Promise<LoginStatusResult>;
   openLoginPage(): Promise<OpenLoginPageResult>;
+  createArticlePostDraft?(input: CreateArticlePostDraftInput): Promise<CreateArticlePostDraftResult>;
   createImagePostDraft?(input: CreateImagePostDraftInput): Promise<CreateImagePostDraftResult>;
   createVideoPostDraft?(input: CreateVideoPostDraftInput): Promise<CreateVideoPostDraftResult>;
   submitVerificationCode?(input: SubmitVerificationCodeInput): Promise<SubmitVerificationCodeResult>;

@@ -3,9 +3,72 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, test } from "vitest";
 import {
+  createArticlePostDraftInputSchema,
   createImagePostDraftInputSchema,
   createVideoPostDraftInputSchema
 } from "../../src/core/schemas.js";
+
+describe("createArticlePostDraftInputSchema", () => {
+  test("accepts a CSDN Markdown article", () => {
+    const dir = mkdirTestDir();
+    const markdownPath = join(dir, "article.md");
+    writeFileSync(markdownPath, "# Body");
+
+    const parsed = createArticlePostDraftInputSchema.parse({
+      platform: "csdn",
+      title: "Article title",
+      markdownPath,
+      tags: ["typescript"],
+      category: "前端"
+    });
+
+    expect(parsed).toMatchObject({
+      platform: "csdn",
+      title: "Article title",
+      markdownPath,
+      tags: ["typescript"],
+      category: "前端"
+    });
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("requires a cover image for WeChat", () => {
+    const dir = mkdirTestDir();
+    const markdownPath = join(dir, "article.markdown");
+    writeFileSync(markdownPath, "# Body");
+
+    const result = createArticlePostDraftInputSchema.safeParse({
+      platform: "wechat",
+      title: "Article title",
+      markdownPath
+    });
+
+    expect(result.success).toBe(false);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("rejects unsupported article platforms and Markdown extensions", () => {
+    const dir = mkdirTestDir();
+    const markdownPath = join(dir, "article.txt");
+    writeFileSync(markdownPath, "# Body");
+
+    expect(
+      createArticlePostDraftInputSchema.safeParse({
+        platform: "douyin",
+        title: "Article title",
+        markdownPath
+      }).success
+    ).toBe(false);
+    expect(
+      createArticlePostDraftInputSchema.safeParse({
+        platform: "zhihu",
+        title: "Article title",
+        markdownPath
+      }).success
+    ).toBe(false);
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
 
 describe("createImagePostDraftInputSchema", () => {
   test("accepts valid image post draft input", () => {
